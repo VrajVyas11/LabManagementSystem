@@ -1,0 +1,70 @@
+# .gitignore for ASP.NET Core Web API project
+
+# Ignore build outputs
+bin/
+obj/
+
+# Ignore user-specific files
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Ignore Rider IDE files
+.idea/
+
+# Ignore Visual Studio Code workspace storage
+.vscode/
+
+# Ignore NuGet packages
+*.nupkg
+*.snupkg
+.nuget/
+
+# Ignore logs
+*.log
+logs/
+
+# Ignore published output
+publish/
+
+# Ignore temporary files
+*.tmp
+*.temp
+
+# Ignore OS generated files
+.DS_Store
+Thumbs.db
+
+# Ignore appsettings secrets
+appsettings.Development.json
+appsettings.Local.json
+appsettings.Secret.json
+
+# Ignore launchSettings.json (optional, if you want to keep local launch configs private)
+Properties/launchSettings.json
+
+# Ignore user secrets folder
+secrets/
+
+# Ignore coverage files
+coverage/
+*.coverage
+*.coveragexml
+
+# Ignore test result files
+TestResults/
+
+# Ignore Resharper files
+_ReSharper*/
+*.DotSettings.user
+
+# Ignore Rider files
+.idea/
+
+# Ignore JetBrains Rider local history
+.idea/.idea.LocalHistory/
+
+# Ignore VS Code extensions folder
+.vscode/extensions.json

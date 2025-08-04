@@ -1,0 +1,2 @@
+ConnectionString=mongodb+srv://vyasvraj92:nEDmHQJcJ7MoKd3A@lab-management-backend.ud9lsyu.mongodb.net/?retryWrites=true&w=majority
+JWTSecretKey=mynameisvrajvyasandidareyoutodecodethissecratkey

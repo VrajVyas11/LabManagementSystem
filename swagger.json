@@ -1,0 +1,497 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Lab Management API",
+    "version": "1.0.0",
+    "description": "API for managing lab attendance, submissions, and user authentication for MSU FoTE MCA department."
+  },
+  "servers": [
+    {
+      "url": "https://yourdomain.com",
+      "description": "Production server"
+    },
+    {
+      "url": "https://localhost:5001",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT Authorization header using the Bearer scheme."
+      }
+    },
+    "schemas": {
+      "RegisterDto": {
+        "type": "object",
+        "required": ["name", "email", "password", "role"],
+        "properties": {
+          "name": { "type": "string", "example": "Alice Teacher" },
+          "email": { "type": "string", "format": "email", "example": "alice.teacher@msu.edu.in" },
+          "password": { "type": "string", "format": "password", "example": "StrongPass123!" },
+          "role": { "type": "string", "enum": ["student", "teacher"], "example": "teacher" }
+        }
+      },
+      "LoginDto": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "alice.teacher@msu.edu.in" },
+          "password": { "type": "string", "format": "password", "example": "StrongPass123!" }
+        }
+      },
+      "AuthResponseDto": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
+          "userId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c3" },
+          "role": { "type": "string", "example": "teacher" }
+        }
+      },
+      "UserDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c3" },
+          "name": { "type": "string", "example": "Alice Teacher" },
+          "email": { "type": "string", "format": "email", "example": "alice.teacher@msu.edu.in" },
+          "role": { "type": "string", "example": "teacher" },
+          "department": { "type": "string", "example": "MCA" },
+          "subjectIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["60f7c0f5e1d3c8b1a0a1b2c4"]
+          }
+        }
+      },
+      "CreateLabDto": {
+        "type": "object",
+        "required": ["subjectId", "startTime", "endTime", "submissionDeadline"],
+        "properties": {
+          "subjectId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c4" },
+          "startTime": { "type": "string", "format": "date-time", "example": "2025-08-10T10:00:00Z" },
+          "endTime": { "type": "string", "format": "date-time", "example": "2025-08-10T12:00:00Z" },
+          "submissionDeadline": { "type": "string", "format": "date-time", "example": "2025-08-10T14:00:00Z" }
+        }
+      },
+      "LabDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c5" },
+          "subjectId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c4" },
+          "teacherId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c3" },
+          "startTime": { "type": "string", "format": "date-time", "example": "2025-08-10T10:00:00Z" },
+          "endTime": { "type": "string", "format": "date-time", "example": "2025-08-10T12:00:00Z" },
+          "submissionDeadline": { "type": "string", "format": "date-time", "example": "2025-08-10T14:00:00Z" },
+          "notificationSent": { "type": "boolean", "example": false }
+        }
+      },
+      "ClockInDto": {
+        "type": "object",
+        "required": ["labId"],
+        "properties": {
+          "labId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c5" }
+        }
+      },
+      "ClockOutDto": {
+        "type": "object",
+        "required": ["labId"],
+        "properties": {
+          "labId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c5" }
+        }
+      },
+      "AttendanceDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c6" },
+          "labId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c5" },
+          "studentId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c7" },
+          "clockInTime": { "type": "string", "format": "date-time", "nullable": true },
+          "clockOutTime": { "type": "string", "format": "date-time", "nullable": true },
+          "status": { "type": "string", "enum": ["Present", "Absent", "Late"], "example": "Present" },
+          "attendanceTick": { "type": "boolean", "example": true }
+        }
+      },
+      "SubmissionDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c8" },
+          "labId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c5" },
+          "studentId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c7" },
+          "fileUrl": { "type": "string", "format": "uri", "example": "/uploads/abc123.pdf" },
+          "submittedAt": { "type": "string", "format": "date-time", "example": "2025-08-10T13:00:00Z" },
+          "feedback": { "type": "string", "nullable": true, "example": "Good work!" },
+          "marks": { "type": "integer", "nullable": true, "example": 85 }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "Error message details" }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponseDto" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (e.g. email already registered)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login user and get JWT token",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponseDto" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "summary": "Get current logged-in user profile",
+        "tags": ["Users"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User profile retrieved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserDto" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "summary": "Get all users (Teacher only)",
+        "tags": ["Users"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/UserDto" }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not a teacher",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/labs": {
+      "post": {
+        "summary": "Create a new lab (Teacher only)",
+        "tags": ["Labs"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateLabDto" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Lab created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LabDto" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not a teacher",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/labs/{id}": {
+      "get": {
+        "summary": "Get lab details by ID",
+        "tags": ["Labs"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Lab ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lab details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LabDto" }
+              }
+            }
+          },
+          "404": {
+            "description": "Lab not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attendance/clockin": {
+      "post": {
+        "summary": "Student clock in for a lab",
+        "tags": ["Attendance"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ClockInDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Clock-in successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AttendanceDto" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request or invalid clock-in",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attendance/clockout": {
+      "post": {
+        "summary": "Student clock out for a lab",
+        "tags": ["Attendance"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ClockOutDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Clock-out successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AttendanceDto" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request or invalid clock-out",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/submissions": {
+      "post": {
+        "summary": "Upload lab submission (student only)",
+        "tags": ["Submissions"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file", "labId"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File to upload (pdf, docx, images)"
+                  },
+                  "labId": {
+                    "type": "string",
+                    "description": "ID of the lab"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Submission uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SubmissionDto" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request or invalid file",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
