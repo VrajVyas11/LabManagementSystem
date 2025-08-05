@@ -11,17 +11,21 @@
       "description": "Production server"
     },
     {
-      "url": "https://localhost:5001",
-      "description": "Local development server"
+      "url": "https://localhost:5036",
+      "description": "Local development server (HTTPS)"
+    },
+    {
+      "url": "http://localhost:5036",
+      "description": "Local development server (HTTP)"
     }
   ],
   "components": {
     "securitySchemes": {
-      "BearerAuth": {
+      "Bearer": {
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "JWT Authorization header using the Bearer scheme."
+        "description": "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token."
       }
     },
     "schemas": {
@@ -29,36 +33,95 @@
         "type": "object",
         "required": ["name", "email", "password", "role"],
         "properties": {
-          "name": { "type": "string", "example": "Alice Teacher" },
-          "email": { "type": "string", "format": "email", "example": "alice.teacher@msu.edu.in" },
-          "password": { "type": "string", "format": "password", "example": "StrongPass123!" },
-          "role": { "type": "string", "enum": ["student", "teacher"], "example": "teacher" }
+          "name": { 
+            "type": "string", 
+            "example": "Alice Teacher",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "email": { 
+            "type": "string", 
+            "format": "email", 
+            "example": "alice.teacher@msu.edu.in" 
+          },
+          "password": { 
+            "type": "string", 
+            "format": "password", 
+            "example": "StrongPass123!",
+            "minLength": 8
+          },
+          "role": { 
+            "type": "string", 
+            "enum": ["Student", "Teacher"], 
+            "example": "Teacher" 
+          }
         }
       },
       "LoginDto": {
         "type": "object",
         "required": ["email", "password"],
         "properties": {
-          "email": { "type": "string", "format": "email", "example": "alice.teacher@msu.edu.in" },
-          "password": { "type": "string", "format": "password", "example": "StrongPass123!" }
+          "email": { 
+            "type": "string", 
+            "format": "email", 
+            "example": "alice.teacher@msu.edu.in" 
+          },
+          "password": { 
+            "type": "string", 
+            "format": "password", 
+            "example": "StrongPass123!" 
+          }
         }
       },
       "AuthResponseDto": {
         "type": "object",
         "properties": {
-          "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
-          "userId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c3" },
-          "role": { "type": "string", "example": "teacher" }
+          "token": { 
+            "type": "string", 
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
+          },
+          "userId": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c3" 
+          },
+          "role": { 
+            "type": "string", 
+            "example": "Teacher" 
+          },
+          "name": {
+            "type": "string",
+            "example": "Alice Teacher"
+          },
+          "email": {
+            "type": "string",
+            "example": "alice.teacher@msu.edu.in"
+          }
         }
       },
       "UserDto": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c3" },
-          "name": { "type": "string", "example": "Alice Teacher" },
-          "email": { "type": "string", "format": "email", "example": "alice.teacher@msu.edu.in" },
-          "role": { "type": "string", "example": "teacher" },
-          "department": { "type": "string", "example": "MCA" },
+          "id": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c3" 
+          },
+          "name": { 
+            "type": "string", 
+            "example": "Alice Teacher" 
+          },
+          "email": { 
+            "type": "string", 
+            "format": "email", 
+            "example": "alice.teacher@msu.edu.in" 
+          },
+          "role": { 
+            "type": "string", 
+            "example": "Teacher" 
+          },
+          "department": { 
+            "type": "string", 
+            "example": "MCA" 
+          },
           "subjectIds": {
             "type": "array",
             "items": { "type": "string" },
@@ -70,80 +133,203 @@
         "type": "object",
         "required": ["subjectId", "startTime", "endTime", "submissionDeadline"],
         "properties": {
-          "subjectId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c4" },
-          "startTime": { "type": "string", "format": "date-time", "example": "2025-08-10T10:00:00Z" },
-          "endTime": { "type": "string", "format": "date-time", "example": "2025-08-10T12:00:00Z" },
-          "submissionDeadline": { "type": "string", "format": "date-time", "example": "2025-08-10T14:00:00Z" }
+          "subjectId": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c4" 
+          },
+          "startTime": { 
+            "type": "string", 
+            "format": "date-time", 
+            "example": "2025-08-10T10:00:00Z" 
+          },
+          "endTime": { 
+            "type": "string", 
+            "format": "date-time", 
+            "example": "2025-08-10T12:00:00Z" 
+          },
+          "submissionDeadline": { 
+            "type": "string", 
+            "format": "date-time", 
+            "example": "2025-08-10T14:00:00Z" 
+          }
         }
       },
       "LabDto": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c5" },
-          "subjectId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c4" },
-          "teacherId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c3" },
-          "startTime": { "type": "string", "format": "date-time", "example": "2025-08-10T10:00:00Z" },
-          "endTime": { "type": "string", "format": "date-time", "example": "2025-08-10T12:00:00Z" },
-          "submissionDeadline": { "type": "string", "format": "date-time", "example": "2025-08-10T14:00:00Z" },
-          "notificationSent": { "type": "boolean", "example": false }
+          "id": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c5" 
+          },
+          "subjectId": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c4" 
+          },
+          "teacherId": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c3" 
+          },
+          "startTime": { 
+            "type": "string", 
+            "format": "date-time", 
+            "example": "2025-08-10T10:00:00Z" 
+          },
+          "endTime": { 
+            "type": "string", 
+            "format": "date-time", 
+            "example": "2025-08-10T12:00:00Z" 
+          },
+          "submissionDeadline": { 
+            "type": "string", 
+            "format": "date-time", 
+            "example": "2025-08-10T14:00:00Z" 
+          },
+          "notificationSent": { 
+            "type": "boolean", 
+            "example": false 
+          }
         }
       },
       "ClockInDto": {
         "type": "object",
         "required": ["labId"],
         "properties": {
-          "labId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c5" }
+          "labId": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c5" 
+          }
         }
       },
       "ClockOutDto": {
         "type": "object",
         "required": ["labId"],
         "properties": {
-          "labId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c5" }
+          "labId": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c5" 
+          }
         }
       },
       "AttendanceDto": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c6" },
-          "labId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c5" },
-          "studentId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c7" },
-          "clockInTime": { "type": "string", "format": "date-time", "nullable": true },
-          "clockOutTime": { "type": "string", "format": "date-time", "nullable": true },
-          "status": { "type": "string", "enum": ["Present", "Absent", "Late"], "example": "Present" },
-          "attendanceTick": { "type": "boolean", "example": true }
+          "id": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c6" 
+          },
+          "labId": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c5" 
+          },
+          "studentId": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c7" 
+          },
+          "clockInTime": { 
+            "type": "string", 
+            "format": "date-time", 
+            "nullable": true,
+            "example": "2025-08-10T10:05:00Z"
+          },
+          "clockOutTime": { 
+            "type": "string", 
+            "format": "date-time", 
+            "nullable": true,
+            "example": "2025-08-10T11:55:00Z"
+          },
+          "status": { 
+            "type": "string", 
+            "enum": ["Present", "Absent", "Late"], 
+            "example": "Present" 
+          },
+          "attendanceTick": { 
+            "type": "boolean", 
+            "example": true 
+          }
         }
       },
       "SubmissionDto": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c8" },
-          "labId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c5" },
-          "studentId": { "type": "string", "example": "60f7c0f5e1d3c8b1a0a1b2c7" },
-          "fileUrl": { "type": "string", "format": "uri", "example": "/uploads/abc123.pdf" },
-          "submittedAt": { "type": "string", "format": "date-time", "example": "2025-08-10T13:00:00Z" },
-          "feedback": { "type": "string", "nullable": true, "example": "Good work!" },
-          "marks": { "type": "integer", "nullable": true, "example": 85 }
+          "id": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c8" 
+          },
+          "labId": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c5" 
+          },
+          "studentId": { 
+            "type": "string", 
+            "example": "60f7c0f5e1d3c8b1a0a1b2c7" 
+          },
+          "fileUrl": { 
+            "type": "string", 
+            "format": "uri", 
+            "example": "/uploads/abc123.pdf" 
+          },
+          "submittedAt": { 
+            "type": "string", 
+            "format": "date-time", 
+            "example": "2025-08-10T13:00:00Z" 
+          },
+          "feedback": { 
+            "type": "string", 
+            "nullable": true, 
+            "example": "Good work!" 
+          },
+          "marks": { 
+            "type": "integer", 
+            "nullable": true, 
+            "example": 85,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true,
+            "example": "lab_assignment.pdf"
+          },
+          "fileSize": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1024576
+          }
         }
       },
       "ErrorResponse": {
         "type": "object",
         "properties": {
-          "message": { "type": "string", "example": "Error message details" }
+          "message": { 
+            "type": "string", 
+            "example": "Error message details" 
+          },
+          "details": {
+            "type": "string",
+            "nullable": true,
+            "example": "Additional error information"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-08-05T12:00:00Z"
+          }
         }
       }
     }
   },
   "security": [
     {
-      "BearerAuth": []
+      "Bearer": []
     }
   ],
   "paths": {
     "/api/auth/register": {
       "post": {
         "summary": "Register a new user",
+        "description": "Register a new student or teacher account",
         "tags": ["Authentication"],
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -175,7 +361,9 @@
     "/api/auth/login": {
       "post": {
         "summary": "Login user and get JWT token",
+        "description": "Authenticate user credentials and return JWT token",
         "tags": ["Authentication"],
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -207,8 +395,9 @@
     "/api/users/me": {
       "get": {
         "summary": "Get current logged-in user profile",
+        "description": "Retrieve the profile information of the currently authenticated user",
         "tags": ["Users"],
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "Bearer": [] }],
         "responses": {
           "200": {
             "description": "User profile retrieved",
@@ -232,8 +421,9 @@
     "/api/users": {
       "get": {
         "summary": "Get all users (Teacher only)",
+        "description": "Retrieve a list of all users. Only accessible by teachers.",
         "tags": ["Users"],
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "Bearer": [] }],
         "responses": {
           "200": {
             "description": "List of users",
@@ -268,8 +458,9 @@
     "/api/labs": {
       "post": {
         "summary": "Create a new lab (Teacher only)",
+        "description": "Create a new lab session. Only accessible by teachers.",
         "tags": ["Labs"],
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "Bearer": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -317,15 +508,17 @@
     "/api/labs/{id}": {
       "get": {
         "summary": "Get lab details by ID",
+        "description": "Retrieve detailed information about a specific lab",
         "tags": ["Labs"],
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "Bearer": [] }],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "schema": { "type": "string" },
-            "description": "Lab ID"
+            "description": "Lab ID",
+            "example": "60f7c0f5e1d3c8b1a0a1b2c5"
           }
         ],
         "responses": {
@@ -359,8 +552,9 @@
     "/api/attendance/clockin": {
       "post": {
         "summary": "Student clock in for a lab",
+        "description": "Record student attendance by clocking in for a lab session",
         "tags": ["Attendance"],
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "Bearer": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -400,8 +594,9 @@
     "/api/attendance/clockout": {
       "post": {
         "summary": "Student clock out for a lab",
+        "description": "Record student departure by clocking out from a lab session",
         "tags": ["Attendance"],
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "Bearer": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -440,9 +635,10 @@
     },
     "/api/submissions": {
       "post": {
-        "summary": "Upload lab submission (student only)",
+        "summary": "Upload lab submission (Student only)",
+        "description": "Upload a file as lab submission. Maximum file size is 20MB. Supported formats: pdf, docx, doc, jpg, jpeg, png, gif, txt",
         "tags": ["Submissions"],
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "Bearer": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -454,11 +650,12 @@
                   "file": {
                     "type": "string",
                     "format": "binary",
-                    "description": "File to upload (pdf, docx, images)"
+                    "description": "File to upload (pdf, docx, doc, jpg, jpeg, png, gif, txt - max 20MB)"
                   },
                   "labId": {
                     "type": "string",
-                    "description": "ID of the lab"
+                    "description": "ID of the lab for this submission",
+                    "example": "60f7c0f5e1d3c8b1a0a1b2c5"
                   }
                 }
               }
@@ -475,7 +672,7 @@
             }
           },
           "400": {
-            "description": "Bad request or invalid file",
+            "description": "Bad request - invalid file or missing parameters",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -483,7 +680,67 @@
             }
           },
           "401": {
-            "description": "Unauthorized",
+            "description": "Unauthorized - invalid or missing JWT token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - user is not a student",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload too large - file exceeds 20MB limit",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/submissions/{labId}": {
+      "get": {
+        "summary": "Get submission for a specific lab",
+        "description": "Retrieve the submission made by the current user for a specific lab",
+        "tags": ["Submissions"],
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "name": "labId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Lab ID",
+            "example": "60f7c0f5e1d3c8b1a0a1b2c5"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submission details retrieved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SubmissionDto" }
+              }
+            }
+          },
+          "404": {
+            "description": "Submission not found for this lab",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing JWT token",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -493,5 +750,27 @@
         }
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "User registration and login endpoints"
+    },
+    {
+      "name": "Users",
+      "description": "User management and profile endpoints"
+    },
+    {
+      "name": "Labs",
+      "description": "Lab session management endpoints"
+    },
+    {
+      "name": "Attendance",
+      "description": "Student attendance tracking endpoints"
+    },
+    {
+      "name": "Submissions",
+      "description": "Lab submission management endpoints"
+    }
+  ]
 }

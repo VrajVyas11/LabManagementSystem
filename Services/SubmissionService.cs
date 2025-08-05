@@ -24,27 +24,119 @@ namespace LabManagementBackend.Services
 
         public async Task<Submission> UploadSubmissionAsync(string studentId, string labId, IFormFile file)
         {
-            var fileUrl = await FileHelper.SaveFileAsync(file);
+            // Check if submission already exists for this lab and student
+            var existingSubmission = await _submissions
+                .Find(s => s.StudentId == studentId && s.LabId == labId)
+                .FirstOrDefaultAsync();
 
-            var submission = new Submission
+            if (existingSubmission != null)
             {
-                LabId = labId,
-                StudentId = studentId,
-                FileUrl = fileUrl,
-                SubmittedAt = DateTime.UtcNow
-            };
+                // Delete old file if it exists
+                FileHelper.DeleteFile(existingSubmission.FileUrl);
+                
+                // Update existing submission
+                var fileUrl = await FileHelper.SaveFileAsync(file);
+                
+                existingSubmission.FileUrl = fileUrl;
+                existingSubmission.SubmittedAt = DateTime.UtcNow;
+                existingSubmission.FileName = file.FileName;
+                existingSubmission.FileSize = file.Length;
+                
+                await _submissions.ReplaceOneAsync(
+                    s => s.Id == existingSubmission.Id, 
+                    existingSubmission
+                );
 
-            await _submissions.InsertOneAsync(submission);
+                // Update attendance tick if attendance present
+                await _attendanceService.SetAttendanceTickIfSubmittedAsync(labId, studentId, true);
 
-            // Update attendance tick if attendance present
-            await _attendanceService.SetAttendanceTickIfSubmittedAsync(labId, studentId, true);
+                return existingSubmission;
+            }
+            else
+            {
+                // Create new submission
+                var fileUrl = await FileHelper.SaveFileAsync(file);
 
-            return submission;
+                var submission = new Submission
+                {
+                    LabId = labId,
+                    StudentId = studentId,
+                    FileUrl = fileUrl,
+                    SubmittedAt = DateTime.UtcNow,
+                    FileName = file.FileName,
+                    FileSize = file.Length
+                };
+
+                await _submissions.InsertOneAsync(submission);
+
+                // Update attendance tick if attendance present
+                await _attendanceService.SetAttendanceTickIfSubmittedAsync(labId, studentId, true);
+
+                return submission;
+            }
         }
 
-        public async Task<Submission> GetSubmissionAsync(string studentId, string labId)
+        public async Task<Submission?> GetSubmissionAsync(string studentId, string labId)
         {
-            return await _submissions.Find(s => s.StudentId == studentId && s.LabId == labId).FirstOrDefaultAsync();
+            return await _submissions
+                .Find(s => s.StudentId == studentId && s.LabId == labId)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<List<Submission>> GetSubmissionsByLabAsync(string labId)
+        {
+            return await _submissions
+                .Find(s => s.LabId == labId)
+                .ToListAsync();
+        }
+
+        public async Task<List<Submission>> GetSubmissionsByStudentAsync(string studentId)
+        {
+            return await _submissions
+                .Find(s => s.StudentId == studentId)
+                .ToListAsync();
+        }
+
+        public async Task<bool> DeleteSubmissionAsync(string submissionId, string studentId)
+        {
+            var submission = await _submissions
+                .Find(s => s.Id == submissionId && s.StudentId == studentId)
+                .FirstOrDefaultAsync();
+
+            if (submission == null)
+                return false;
+
+            // Delete the file from storage
+            FileHelper.DeleteFile(submission.FileUrl);
+
+            // Delete from database
+            var result = await _submissions.DeleteOneAsync(s => s.Id == submissionId);
+
+            if (result.DeletedCount > 0)
+            {
+                // Update attendance tick
+                await _attendanceService.SetAttendanceTickIfSubmittedAsync(submission.LabId, studentId, false);
+                return true;
+            }
+
+            return false;
+        }
+
+        public async Task<Submission?> UpdateSubmissionFeedbackAsync(string submissionId, string feedback, int? marks)
+        {
+            var filter = Builders<Submission>.Filter.Eq(s => s.Id, submissionId);
+            var update = Builders<Submission>.Update
+                .Set(s => s.Feedback, feedback)
+                .Set(s => s.Marks, marks);
+
+            var result = await _submissions.UpdateOneAsync(filter, update);
+
+            if (result.ModifiedCount > 0)
+            {
+                return await _submissions.Find(s => s.Id == submissionId).FirstOrDefaultAsync();
+            }
+
+            return null;
         }
     }
 }

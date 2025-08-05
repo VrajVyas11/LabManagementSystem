@@ -8,20 +8,38 @@ namespace LabManagementBackend.Models
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
+        [BsonElement("labId")]
         [BsonRepresentation(BsonType.ObjectId)]
-        public string LabId { get; set; }
+        public string LabId { get; set; } = string.Empty;
 
+        [BsonElement("studentId")]
         [BsonRepresentation(BsonType.ObjectId)]
-        public string StudentId { get; set; }
+        public string StudentId { get; set; } = string.Empty;
 
-        public string FileUrl { get; set; }
+        [BsonElement("fileUrl")]
+        public string FileUrl { get; set; } = string.Empty;
 
+        [BsonElement("fileName")]
+        public string? FileName { get; set; }
+
+        [BsonElement("fileSize")]
+        public long? FileSize { get; set; }
+
+        [BsonElement("submittedAt")]
         public DateTime SubmittedAt { get; set; }
 
-        public string Feedback { get; set; }
+        [BsonElement("feedback")]
+        public string? Feedback { get; set; }
 
+        [BsonElement("marks")]
         public int? Marks { get; set; }
+
+        [BsonElement("createdAt")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [BsonElement("updatedAt")]
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }
