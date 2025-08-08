@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+@import "tailwindcss";
+@tailwind utilities;
+
+/* Import UI font */
+
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --primary: #06b6d4;
+  --primary-dark: #0891b2;
+}
+
+/* Global */
+html, body, #root { height: 100%; }
+body {
+  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: linear-gradient(180deg, var(--bg) 0%, #ffffff 60%);
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* Card */
+.card {
+  @apply bg-white border border-gray-100 rounded-3xl p-6 shadow-[0_8px_30px_rgba(2,6,23,0.08)];
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.98));
+  backdrop-filter: blur(4px);
+}
+
+/* Buttons */
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 bg-[#38bdf8] text-white px-4 py-2 rounded-lg shadow-sm hover:bg-[#0891b2] active:scale-[0.995] transition;
+}
+.btn-ghost {
+  @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-slate-700 hover:bg-gray-50;
+}
+
+/* Inputs */
+.input {
+  @apply w-full px-4 py-3 rounded-xl border border-gray-200 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/20;
+}
+
+/* Titles */
+.section-title {
+  @apply text-lg font-semibold text-slate-900 mb-2;
+}
+
+/* Muted text */
+.muted { color: var(--muted); }
+
+/* Badge */
+.badge {
+  @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100;
+}
+
+/* List item */
+.list-item {
+  @apply p-4 border border-gray-100 rounded-xl bg-white hover:shadow-lg transition-shadow;
+}
+
+/* file drop */
+.file-drop {
+  @apply flex items-center justify-between gap-4 p-4 border-2 border-dashed border-gray-200 rounded-xl bg-white hover:border-[#38bdf8] transition;
+}
+
+/* small helper */
+.kv { @apply text-sm text-slate-600; }

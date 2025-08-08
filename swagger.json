@@ -456,6 +456,54 @@
       }
     },
     "/api/labs": {
+            "get": {
+        "summary": "get all the Labs",
+        "description": "Get all the current Labs availbale to both teachers and students",
+        "tags": ["Labs"],
+        "security": [{ "Bearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LabDto" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "All labs",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LabDto" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "summary": "Create a new lab (Teacher only)",
         "description": "Create a new lab session. Only accessible by teachers.",

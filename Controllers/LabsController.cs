@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace LabManagementBackend.Controllers
 {
@@ -19,11 +20,12 @@ namespace LabManagementBackend.Controllers
             _labService = labService;
         }
 
+        // Create Lab (Teacher only)
         [HttpPost]
         [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> CreateLab(CreateLabDto dto)
         {
-            var teacherId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var teacherId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new System.Exception("Teacher id not found");
             try
             {
                 var lab = await _labService.CreateLabAsync(dto, teacherId);
@@ -35,13 +37,23 @@ namespace LabManagementBackend.Controllers
             }
         }
 
+        // Get aggregated lab by id (embedded subject and teacher)
         [HttpGet("{id}")]
         [Authorize]
         public async Task<IActionResult> GetLab(string id)
         {
-            var lab = await _labService.GetLabByIdAsync(id);
+            var lab = await _labService.GetAggregatedLabByIdAsync(id);
             if (lab == null) return NotFound();
             return Ok(lab);
+        }
+
+        // Get all aggregated labs
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> GetAll()
+        {
+            var labs = await _labService.GetAllAggregatedLabsAsync();
+            return Ok(labs);
         }
     }
 }

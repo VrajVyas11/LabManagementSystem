@@ -9,7 +9,19 @@ using System.Text;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllers();
 
+// Register CORS service with named policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowViteFrontend", builder =>
+    {
+        builder.WithOrigins("http://localhost:5173") // Vite dev server
+               .AllowAnyHeader()
+               .AllowAnyMethod()
+               .AllowCredentials(); // If you're using cookies or auth headers
+    });
+});
 // Configure MongoDB settings
 builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("MongoDbSettings"));
@@ -17,6 +29,7 @@ builder.Services.Configure<MongoDbSettings>(
 // Register services
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<LabService>();
+builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<AttendanceService>();
 builder.Services.AddSingleton<SubmissionService>();
 
@@ -114,7 +127,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseCors("AllowViteFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
