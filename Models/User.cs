@@ -19,6 +19,10 @@ namespace LabManagementBackend.Models
 
         public string Email { get; set; }
 
+        public string ContactNumber { get; set; }
+
+        public string Bio { get; set; }
+
         public UserRole Role { get; set; }
 
         public string Department { get; set; } = "MCA";

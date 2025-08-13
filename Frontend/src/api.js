@@ -1,5 +1,6 @@
-// simple API client that sends JWT from localStorage and handles JSON/form
-const base = "";
+// src/api.js
+const BASE_HOST = "http://localhost:5036";
+const base = ""; // keep empty so full URLs are used below
 
 async function request(path, opts = {}) {
   const headers = opts.headers || {};
@@ -9,7 +10,7 @@ async function request(path, opts = {}) {
   const token = localStorage.getItem("token");
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(base + path, {
+  const res = await fetch(path.startsWith("http") ? path : base + path, {
     ...opts,
     headers,
   });
@@ -29,28 +30,79 @@ async function request(path, opts = {}) {
 }
 
 export const api = {
+  // Auth
   register: (payload) =>
-    request("http://localhost:5036/api/auth/register", { method: "POST", body: JSON.stringify(payload) }),
+    request(`${BASE_HOST}/api/auth/register`, { method: "POST", body: JSON.stringify(payload) }),
   login: (payload) =>
-    request("http://localhost:5036/api/auth/login", { method: "POST", body: JSON.stringify(payload) }),
+    request(`${BASE_HOST}/api/auth/login`, { method: "POST", body: JSON.stringify(payload) }),
 
-  me: () => request("http://localhost:5036/api/users/me"),
-  users: () => request("http://localhost:5036/api/users"),
+  // Users
+  me: () => request(`${BASE_HOST}/api/users/me`),
+  users: () => request(`${BASE_HOST}/api/users`),
+  updateProfile: (payload) =>
+    request(`${BASE_HOST}/api/users/me`, { method: "PUT", body: JSON.stringify(payload) }),
+  getUserStats: () => request(`${BASE_HOST}/api/users/me/stats`),
 
+  // Labs
   createLab: (payload) =>
-    request("http://localhost:5036/api/labs", { method: "POST", body: JSON.stringify(payload) }),
-  getLab: (id) => request(`http://localhost:5036/api/labs/${id}`),
-  listLabs: () => request(`http://localhost:5036/api/labs`),
+    request(`${BASE_HOST}/api/labs`, { method: "POST", body: JSON.stringify(payload) }),
+  getLab: (id) => request(`${BASE_HOST}/api/labs/${id}`),
+  listLabs: () => request(`${BASE_HOST}/api/labs`),
+  updateLab: (id, payload) =>
+    request(`${BASE_HOST}/api/labs/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteLab: (id) =>
+    request(`${BASE_HOST}/api/labs/${id}`, { method: "DELETE" }),
 
+  // Attendance
   clockIn: (labId) =>
-    request("http://localhost:5036/api/attendance/clockin", { method: "POST", body: JSON.stringify({ labId }) }),
+    request(`${BASE_HOST}/api/attendance/clockin`, { method: "POST", body: JSON.stringify({ labId }) }),
   clockOut: (labId) =>
-    request("http://localhost:5036/api/attendance/clockout", { method: "POST", body: JSON.stringify({ labId }) }),
+    request(`${BASE_HOST}/api/attendance/clockout`, { method: "POST", body: JSON.stringify({ labId }) }),
+  getAttendanceReport: (labId) => request(`${BASE_HOST}/api/attendance/report/${labId}`),
+  getStudentAttendance: (studentId) => request(`${BASE_HOST}/api/attendance/student/${studentId}`),
 
+  // Submissions
   submit: (labId, file) => {
     const form = new FormData();
     form.append("file", file);
     form.append("labId", labId);
-    return request("http://localhost:5036/api/submissions", { method: "POST", body: form });
+    return request(`${BASE_HOST}/api/submissions`, { method: "POST", body: form });
   },
+   getMySubmission: (labId) => {
+    if (!labId) return Promise.reject(new Error("labId required"));
+    return request(`${BASE_HOST}/api/submissions/my?labId=${encodeURIComponent(labId)}`)
+  },
+  getSubmissions: (labId) => {
+    if (!labId) {
+      // Defensive: avoid requesting /lab/undefined
+      return Promise.reject(new Error("labId is required for getSubmissions"));
+    }
+    return request(`${BASE_HOST}/api/submissions/lab/${labId}`);
+  },
+  getStudentSubmissions: (studentId) => request(`${BASE_HOST}/api/submissions/student/${studentId}`),
+  gradeSubmission: (submissionId, payload) =>
+    request(`${BASE_HOST}/api/submissions/${submissionId}/grade`, { method: "POST", body: JSON.stringify(payload) }),
+  downloadSubmission: (submissionId) => request(`${BASE_HOST}/api/submissions/${submissionId}/download`),
+
+  // Notifications
+  getNotifications: () => request(`${BASE_HOST}/api/notifications`),
+  markNotificationRead: (notificationId) =>
+    request(`${BASE_HOST}/api/notifications/${notificationId}/read`, { method: "POST" }),
+  markAllNotificationsRead: () =>
+    request(`${BASE_HOST}/api/notifications/read-all`, { method: "POST" }),
+  deleteNotification: (notificationId) =>
+    request(`${BASE_HOST}/api/notifications/${notificationId}`, { method: "DELETE" }),
+
+  // Reports
+  getLabReport: (labId) => request(`${BASE_HOST}/api/reports/lab/${labId}`),
+  getStudentAnalytics: (studentId) => request(`${BASE_HOST}/api/reports/student/${studentId}`),
+  getTeacherDashboard: () => request(`${BASE_HOST}/api/reports/teacher/dashboard`),
+
+  // Settings
+  updateSettings: (payload) =>
+    request(`${BASE_HOST}/api/settings`, { method: "PUT", body: JSON.stringify(payload) }),
+  getSettings: () => request(`${BASE_HOST}/api/settings`),
+
+// Subjects
+  getSubjects: () => request(`${BASE_HOST}/api/subjects`),
 };

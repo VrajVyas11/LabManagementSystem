@@ -33,17 +33,17 @@ namespace LabManagementBackend.Services
             {
                 // Delete old file if it exists
                 FileHelper.DeleteFile(existingSubmission.FileUrl);
-                
+
                 // Update existing submission
                 var fileUrl = await FileHelper.SaveFileAsync(file);
-                
+
                 existingSubmission.FileUrl = fileUrl;
                 existingSubmission.SubmittedAt = DateTime.UtcNow;
                 existingSubmission.FileName = file.FileName;
                 existingSubmission.FileSize = file.Length;
-                
+
                 await _submissions.ReplaceOneAsync(
-                    s => s.Id == existingSubmission.Id, 
+                    s => s.Id == existingSubmission.Id,
                     existingSubmission
                 );
 
@@ -138,5 +138,13 @@ namespace LabManagementBackend.Services
 
             return null;
         }
+        
+        public async Task<Submission> GetSubmissionByIdAsync(string submissionId)
+{
+    return await _submissions.Find(s => s.Id == submissionId).FirstOrDefaultAsync();
+}
+
+// convenience name used in controller
+public async Task<Submission> GetSubmissionAsyncByIdAsync(string submissionId) => await GetSubmissionByIdAsync(submissionId);
     }
 }

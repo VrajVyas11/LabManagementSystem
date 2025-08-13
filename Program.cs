@@ -30,9 +30,11 @@ builder.Services.Configure<MongoDbSettings>(
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<LabService>();
 builder.Services.AddSingleton<UserService>();
+builder.Services.AddSingleton<NotificationService>();
+builder.Services.AddSingleton<SubjectService>();
 builder.Services.AddSingleton<AttendanceService>();
 builder.Services.AddSingleton<SubmissionService>();
-
+// builder.Services.AddHostedService<LabReminderBackgroundService>();
 // Add controllers
 builder.Services.AddControllers();
 

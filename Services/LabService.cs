@@ -261,5 +261,14 @@ namespace LabManagementBackend.Services
 
             return dto;
         }
+
+        internal async Task UpdateAsync(Lab lab)
+        {
+            if (lab == null) throw new ArgumentNullException(nameof(lab));
+
+            var filter = Builders<Lab>.Filter.Eq(d => d.Id, lab.Id);
+            // Replace the document with the provided object
+            await _labs.ReplaceOneAsync(filter, lab, new ReplaceOptions { IsUpsert = false });
+        }
     }
 }

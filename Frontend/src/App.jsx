@@ -9,6 +9,7 @@ import LabDetail from "./pages/LabDetail";
 import Profile from "./pages/Profile";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CreateLab from "./pages/CreateLab";
+import TeacherGrading from "./pages/TeacherGrading";
 export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
@@ -44,7 +45,13 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-
+<Route path="/labs/:id/grading"
+element={
+  <ProtectedRoute>
+    <TeacherGrading/>
+  </ProtectedRoute>
+}
+/>
           <Route
             path="/profile"
             element={
@@ -54,13 +61,13 @@ export default function App() {
             }
           />
           <Route
-  path="/labs/create"
-  element={
-    <ProtectedRoute>
-      <CreateLab />
-    </ProtectedRoute>
-  }
-/>
+            path="/labs/create"
+            element={
+              <ProtectedRoute>
+                <CreateLab />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<div className="p-8">Page not found</div>} />
         </Routes>
       </main>
