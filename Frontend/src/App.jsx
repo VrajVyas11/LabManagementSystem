@@ -10,6 +10,9 @@ import Profile from "./pages/Profile";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CreateLab from "./pages/CreateLab";
 import TeacherGrading from "./pages/TeacherGrading";
+import NotificationPreferences from "./pages/NotificationPreferences";
+import NotificationsPage from "./pages/NotificationsPage";
+
 export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
@@ -45,13 +48,13 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-<Route path="/labs/:id/grading"
-element={
-  <ProtectedRoute>
-    <TeacherGrading/>
-  </ProtectedRoute>
-}
-/>
+          <Route path="/labs/:id/grading"
+            element={
+              <ProtectedRoute>
+                <TeacherGrading />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/profile"
             element={
@@ -68,6 +71,16 @@ element={
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <NotificationsPage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="*" element={<div className="p-8">Page not found</div>} />
         </Routes>
       </main>

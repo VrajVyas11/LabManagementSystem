@@ -2,11 +2,11 @@ using LabManagementBackend.Helpers;
 using LabManagementBackend.Services;
 using LabManagementBackend.Filters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Reflection;
+using LabManagementBackend.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
@@ -34,6 +34,12 @@ builder.Services.AddSingleton<NotificationService>();
 builder.Services.AddSingleton<SubjectService>();
 builder.Services.AddSingleton<AttendanceService>();
 builder.Services.AddSingleton<SubmissionService>();
+// Program.cs additions
+
+builder.Services.AddSingleton<NotificationPreferenceService>();
+
+builder.Services.AddSignalR();
+
 // builder.Services.AddHostedService<LabReminderBackgroundService>();
 // Add controllers
 builder.Services.AddControllers();
@@ -139,6 +145,7 @@ app.UseStaticFiles();
 
 app.MapControllers();
 
+app.MapHub<NotificationHub>("/hubs/notifications");
 // Fallback to index.html for SPA routing
 app.MapFallbackToFile("index.html");
 

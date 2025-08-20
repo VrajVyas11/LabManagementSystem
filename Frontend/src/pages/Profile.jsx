@@ -13,10 +13,13 @@ import {
   Award,
   Settings,
   Shield,
+  Settings2,
+  UserSquare,
 } from "lucide-react";
 import useAuth from "../auth/useAuth";
 import Card from "../components/Card";
 import { api } from "../api";
+import NotificationPreferences from "./NotificationPreferences";
 
 /**
  * Stable ProfileField component to prevent remounting and losing focus.
@@ -97,6 +100,7 @@ export default function Profile() {
     bio: "",
   });
   const [loading, setLoading] = useState(false);
+   const [showNotificationsPreferences, setShowNotificationsPreferences] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [stats, setStats] = useState({
     totalLabs: 0,
@@ -306,7 +310,7 @@ export default function Profile() {
                   label="Contact Number"
                   value={editData.contactNumber}
                   field="contactNumber"
-                  Icon={Settings}
+                  Icon={UserSquare}
                   type="tel"
                   isEditing={isEditing}
                   editData={editData}
@@ -379,6 +383,7 @@ export default function Profile() {
                 </div>
               </Card>
             )}
+            {showNotificationsPreferences?<NotificationPreferences/>:            <div className="text-sm cursor-pointer flex justify-center items-center gap-2 rounded-full p-4 w-fit bg-emerald-300 border border-red border-emerald-500/50" onClick={()=>setShowNotificationsPreferences((prev)=>!prev)}><Settings className=" w-5 h-5"/>{showNotificationsPreferences?"Close":"Edit"} Notification Preferences</div>}
           </div>
 
           {/* Right column */}

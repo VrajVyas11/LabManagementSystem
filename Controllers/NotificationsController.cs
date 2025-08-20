@@ -2,6 +2,7 @@ using LabManagementBackend.Models;
 using LabManagementBackend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -52,5 +53,32 @@ namespace LabManagementBackend.Controllers
             await _notificationService.DeleteAsync(id);
             return NoContent();
         }
+
+
+                [HttpGet("all")]
+        public async Task<IActionResult> GetAllNotifications([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
+            var filter = Builders<Notification>.Filter.Or(
+                Builders<Notification>.Filter.Eq(n => n.UserId, userId),
+                Builders<Notification>.Filter.Eq(n => n.UserId, null)
+            );
+
+            var totalCount = await _notificationService.CountAsync(filter);
+            var notifications = await _notificationService.GetPagedAsync(filter, page, pageSize);
+
+            return Ok(new
+            {
+                totalCount,
+                page,
+                pageSize,
+                totalPages = (int)System.Math.Ceiling((double)totalCount / pageSize),
+                notifications
+            });
+        }
+
     }
 }

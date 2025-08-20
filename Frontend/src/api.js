@@ -68,7 +68,7 @@ export const api = {
     form.append("labId", labId);
     return request(`${BASE_HOST}/api/submissions`, { method: "POST", body: form });
   },
-   getMySubmission: (labId) => {
+  getMySubmission: (labId) => {
     if (!labId) return Promise.reject(new Error("labId required"));
     return request(`${BASE_HOST}/api/submissions/my?labId=${encodeURIComponent(labId)}`)
   },
@@ -92,6 +92,11 @@ export const api = {
     request(`${BASE_HOST}/api/notifications/read-all`, { method: "POST" }),
   deleteNotification: (notificationId) =>
     request(`${BASE_HOST}/api/notifications/${notificationId}`, { method: "DELETE" }),
+ getNotificationsPaged: (page = 1, pageSize = 20) =>
+    request(`${BASE_HOST}/api/notifications/all?page=${page}&pageSize=${pageSize}`),
+  getNotificationPreferences: () => request(`${BASE_HOST}/api/notification-preferences`),
+  updateNotificationPreferences: (payload) =>
+    request(`${BASE_HOST}/api/notification-preferences`, { method: "PUT", body: JSON.stringify(payload) }),
 
   // Reports
   getLabReport: (labId) => request(`${BASE_HOST}/api/reports/lab/${labId}`),
@@ -103,6 +108,6 @@ export const api = {
     request(`${BASE_HOST}/api/settings`, { method: "PUT", body: JSON.stringify(payload) }),
   getSettings: () => request(`${BASE_HOST}/api/settings`),
 
-// Subjects
+  // Subjects
   getSubjects: () => request(`${BASE_HOST}/api/subjects`),
 };

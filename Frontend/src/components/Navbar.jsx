@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // src/components/Navbar.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -24,7 +25,7 @@ import {
   Plus
 } from "lucide-react";
 import { api } from "../api";
-
+import useNotificationHub from "../hooks/useNotificationHub";
 export default function Navbar() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
@@ -39,82 +40,115 @@ export default function Navbar() {
   const userMenuRef = useRef(null);
   const notificationRef = useRef(null);
 
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const token = localStorage.getItem("token");
+  const { notifications: realTimeNotifications, setNotifications: setRealTimeNotifications } = useNotificationHub(token);
 
+  // Fetch notifications on mount and merge with real-time
   useEffect(() => {
-    if (user) {
-      fetchNotifications();
-      const notificationTimer = setInterval(fetchNotifications, 120000);
-      return () => clearInterval(notificationTimer);
-    } else {
+    if (!user) {
       setNotifications([]);
       setUnreadCount(0);
+      return;
     }
-  }, [user]);
+    let mounted = true;
+    api.getNotifications()
+      .then((data) => {
+        if (!mounted) return;
+        // Merge with real-time notifications, avoiding duplicates by id
+        const merged = [...data];
+        realTimeNotifications.forEach((rt) => {
+          if (!merged.find((n) => n.id === rt.id)) merged.unshift(rt);
+        });
+        setNotifications(merged);
+        setUnreadCount(merged.filter((n) => !n.read).length);
+      })
+      .catch(() => {
+        setNotifications(realTimeNotifications);
+        setUnreadCount(realTimeNotifications.filter((n) => !n.read).length);
+      });
+    return () => { mounted = false; };
+  }, [user, realTimeNotifications]);
 
+  // Update unread count when notifications change
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
-        setShowUserMenu(false);
-      }
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
-        setShowNotifications(false);
-      }
-    };
+    setUnreadCount(notifications.filter((n) => !n.read).length);
+  }, [notifications]);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const fetchNotifications = async () => {
+  // Mark notification as read
+  const markAsRead = async (notificationId) => {
     try {
-      const data = await api.getNotifications();
-      const normalized = (data || []).map((n) => ({
-        id: n.id || n._id,
-        entityType: n.entityType,
-        entityId: n.entityId,
-        type: n.entityType === "lab" ? "lab_starting" : "generic",
-        title: n.title,
-        message: n.message,
-        time: n.createdAt ? new Date(n.createdAt) : new Date(n.createdAt ?? n.CreatedAt ?? Date.now()),
-        read: !!n.read,
-        priority: (n.priority || "Low").toString().toLowerCase()
-      }));
-      setNotifications(normalized);
-      setUnreadCount(normalized.filter((x) => !x.read).length);
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
+      await api.markNotificationRead(notificationId);
+      setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)));
+    } catch (err) {
+      console.warn("Failed to mark notification read:", err);
     }
   };
+
+  // Mark all as read
+  const markAllAsRead = async () => {
+    try {
+      await api.markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (err) {
+      console.warn("Failed to mark all notifications read:", err);
+    }
+  };
+  // useEffect(() => {
+  //   const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+  //   return () => clearInterval(timer);
+  // }, []);
+
+  // useEffect(() => {
+  //   if (user) {
+  //     fetchNotifications();
+  //     const notificationTimer = setInterval(fetchNotifications, 120000);
+  //     return () => clearInterval(notificationTimer);
+  //   } else {
+  //     setNotifications([]);
+  //     setUnreadCount(0);
+  //   }
+  // }, [user]);
+
+  // useEffect(() => {
+  //   const handleClickOutside = (event) => {
+  //     if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+  //       setShowUserMenu(false);
+  //     }
+  //     if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+  //       setShowNotifications(false);
+  //     }
+  //   };
+
+  //   document.addEventListener("mousedown", handleClickOutside);
+  //   return () => document.removeEventListener("mousedown", handleClickOutside);
+  // }, []);
+
+  // const fetchNotifications = async () => {
+  //   try {
+  //     const data = await api.getNotifications();
+  //     const normalized = (data || []).map((n) => ({
+  //       id: n.id || n._id,
+  //       entityType: n.entityType,
+  //       entityId: n.entityId,
+  //       type: n.entityType === "lab" ? "lab_starting" : "generic",
+  //       title: n.title,
+  //       message: n.message,
+  //       time: n.createdAt ? new Date(n.createdAt) : new Date(n.createdAt ?? n.CreatedAt ?? Date.now()),
+  //       read: !!n.read,
+  //       priority: (n.priority || "Low").toString().toLowerCase()
+  //     }));
+  //     setNotifications(normalized);
+  //     setUnreadCount(normalized.filter((x) => !x.read).length);
+  //   } catch (error) {
+  //     console.error("Failed to fetch notifications:", error);
+  //   }
+  // };
 
   function handleLogout() {
     logout();
     nav("/login");
     setShowUserMenu(false);
   }
-
-  const markAsRead = async (notificationId) => {
-    try {
-      await api.markNotificationRead(notificationId);
-    } catch (err) {
-      console.warn("Failed to mark notification via API:", err);
-    }
-    setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)));
-    setUnreadCount((prev) => Math.max(0, prev - 1));
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      await api.markAllNotificationsRead();
-    } catch (err) {
-      console.warn("Failed to mark all read via API:", err);
-    }
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    setUnreadCount(0);
-  };
 
   const getNotificationIcon = (type) => {
     switch (type) {
