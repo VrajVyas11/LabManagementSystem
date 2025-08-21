@@ -60,7 +60,34 @@ export const api = {
     request(`${BASE_HOST}/api/attendance/clockout`, { method: "POST", body: JSON.stringify({ labId }) }),
   getAttendanceReport: (labId) => request(`${BASE_HOST}/api/attendance/report/${labId}`),
   getStudentAttendance: (studentId) => request(`${BASE_HOST}/api/attendance/student/${studentId}`),
-
+  // src/api.js (add near bottom of file)
+  // Download a file (CSV/PDF) with Authorization header and force download
+  downloadFileWithAuth: async (url, fileName) => {
+    const token = localStorage.getItem("token");
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await fetch(url.startsWith("http") ? url : BASE_HOST + url, {
+      method: "GET",
+      headers,
+    });
+    if (!res.ok) {
+      // Try to parse JSON error body
+      const text = await res.text();
+      let data;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      const message = data?.message || res.statusText;
+      throw new Error(message);
+    }
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = fileName || "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(blobUrl);
+    return true;
+  },
   // Submissions
   submit: (labId, file) => {
     const form = new FormData();
@@ -92,7 +119,7 @@ export const api = {
     request(`${BASE_HOST}/api/notifications/read-all`, { method: "POST" }),
   deleteNotification: (notificationId) =>
     request(`${BASE_HOST}/api/notifications/${notificationId}`, { method: "DELETE" }),
- getNotificationsPaged: (page = 1, pageSize = 20) =>
+  getNotificationsPaged: (page = 1, pageSize = 20) =>
     request(`${BASE_HOST}/api/notifications/all?page=${page}&pageSize=${pageSize}`),
   getNotificationPreferences: () => request(`${BASE_HOST}/api/notification-preferences`),
   updateNotificationPreferences: (payload) =>

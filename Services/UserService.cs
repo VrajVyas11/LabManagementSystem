@@ -22,6 +22,15 @@ namespace LabManagementBackend.Services
         {
             return await _users.Find(u => u.Id == id).FirstOrDefaultAsync();
         }
+        // Get multiple users by list of ids
+        public async Task<List<User>> GetUsersByIdsAsync(IEnumerable<string> ids)
+        {
+            if (ids == null) return new List<User>();
+            var idList = ids.Where(i => !string.IsNullOrWhiteSpace(i)).Distinct().ToList();
+            if (idList.Count == 0) return new List<User>();
+            var filter = Builders<User>.Filter.In(u => u.Id, idList);
+            return await _users.Find(filter).ToListAsync();
+        }
 
         public async Task<List<User>> GetAllUsersAsync()
         {

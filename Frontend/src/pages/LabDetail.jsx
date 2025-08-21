@@ -14,7 +14,28 @@ export default function LabDetail() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
+  const [lateReason, setLateReason] = useState("");
 
+  async function handleClockIn() {
+    setMessage({ type: "", text: "" });
+    if (!isLabActive()) {
+      return setMessage({
+        type: "error",
+        text: "You can only clock in during lab hours"
+      });
+    }
+
+    try {
+      await api.clockIn({ labId: id, lateReason }); // send lateReason
+      setMessage({
+        type: "success",
+        text: "Successfully clocked in"
+      });
+      setLateReason(""); // reset after success
+    } catch (e) {
+      setMessage({ type: "error", text: e.message });
+    }
+  }
   useEffect(() => {
     let mounted = true;
     setLoading(true);
@@ -50,25 +71,6 @@ export default function LabDetail() {
     return now <= deadline;
   };
 
-  async function handleClockIn() {
-    setMessage({ type: "", text: "" });
-    if (!isLabActive()) {
-      return setMessage({
-        type: "error",
-        text: "You can only clock in during lab hours"
-      });
-    }
-
-    try {
-      await api.clockIn(id);
-      setMessage({
-        type: "success",
-        text: "Successfully clocked in"
-      });
-    } catch (e) {
-      setMessage({ type: "error", text: e.message });
-    }
-  }
 
   async function handleClockOut() {
     setMessage({ type: "", text: "" });
@@ -185,12 +187,18 @@ export default function LabDetail() {
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Actions</h3>
           <div className="space-y-6">
             <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Reason for late arrival (optional)"
+                value={lateReason}
+                onChange={(e) => setLateReason(e.target.value)}
+                className="w-full px-3 py-2 border rounded mb-3"
+              />
               <button
                 onClick={handleClockIn}
                 disabled={!isLabActive()}
-                className={`w-full py-2 px-4 rounded-lg text-white font-medium transition-all duration-200 ${
-                  isLabActive() ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 cursor-not-allowed"
-                }`}
+                className={`w-full py-2 px-4 rounded-lg text-white font-medium transition-all duration-200 ${isLabActive() ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 cursor-not-allowed"
+                  }`}
               >
                 Clock In
               </button>
@@ -213,9 +221,8 @@ export default function LabDetail() {
                     <button
                       onClick={handleSubmit}
                       disabled={submitting || !canSubmit()}
-                      className={`flex-1 py-2 px-4 rounded-lg text-white font-medium transition-all duration-200 ${
-                        canSubmit() && !submitting ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 cursor-not-allowed"
-                      }`}
+                      className={`flex-1 py-2 px-4 rounded-lg text-white font-medium transition-all duration-200 ${canSubmit() && !submitting ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 cursor-not-allowed"
+                        }`}
                     >
                       {submitting ? "Uploading..." : "Upload"}
                     </button>

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -24,10 +25,14 @@ namespace LabManagementBackend.Helpers
 
         public string GenerateToken(string userId, string role, string email)
         {
-            var claims = new[]
+            // Normalize role casing to "Teacher" or "Student"
+            var roleNormalized = role?.ToLower() == "teacher" ? "Teacher" : "Student";
+
+            var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, userId),
-                new Claim(ClaimTypes.Role, role),
+                new Claim(ClaimTypes.NameIdentifier, userId),
+                new Claim(ClaimTypes.Role, roleNormalized), // Critical for role-based auth
                 new Claim(JwtRegisteredClaimNames.Email, email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };

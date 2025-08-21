@@ -1,32 +1,37 @@
 using LabManagementBackend.Helpers;
 using LabManagementBackend.Services;
 using LabManagementBackend.Filters;
+using LabManagementBackend.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Text;
 using System.Reflection;
-using LabManagementBackend.Hubs;
+using System.Security.Claims;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
 builder.Services.AddControllers();
 
-// Register CORS service with named policy
+// Register CORS policy
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowViteFrontend", builder =>
+    options.AddPolicy("AllowViteFrontend", policy =>
     {
-        builder.WithOrigins("http://localhost:5173") // Vite dev server
-               .AllowAnyHeader()
-               .AllowAnyMethod()
-               .AllowCredentials(); // If you're using cookies or auth headers
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
+
 // Configure MongoDB settings
 builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("MongoDbSettings"));
 
-// Register services
+// Register your services
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<LabService>();
 builder.Services.AddSingleton<UserService>();
@@ -34,17 +39,12 @@ builder.Services.AddSingleton<NotificationService>();
 builder.Services.AddSingleton<SubjectService>();
 builder.Services.AddSingleton<AttendanceService>();
 builder.Services.AddSingleton<SubmissionService>();
-// Program.cs additions
-
 builder.Services.AddSingleton<NotificationPreferenceService>();
 
+// Add SignalR
 builder.Services.AddSignalR();
 
-// builder.Services.AddHostedService<LabReminderBackgroundService>();
-// Add controllers
-builder.Services.AddControllers();
-
-// JWT Authentication
+// JWT Authentication configuration
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"];
 
@@ -55,7 +55,6 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-#pragma warning disable CS8604 // Possible null reference argument.
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -64,49 +63,48 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+
+        // Map role and name claims correctly
+        RoleClaimType = ClaimTypes.Role,
+        NameClaimType = ClaimTypes.NameIdentifier
     };
-#pragma warning restore CS8604 // Possible null reference argument.
 });
 
-// Swagger
+// Swagger configuration
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo 
-    { 
-        Title = "Lab Management API", 
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Lab Management API",
         Version = "v1",
         Description = "API for managing lab attendance, submissions, and user authentication for MSU FoTE MCA department."
     });
-    
-    // JWT Bearer Authentication
+
+    // JWT Bearer Authentication in Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\nExample: \"Bearer 12345abcdef\"",
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token.\r\n\r\nExample: \"Bearer 12345abcdef\"",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer",
         BearerFormat = "JWT"
     });
-    
+
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
-            new string[] {}
+            new string[] { }
         }
     });
 
-    // Enable XML comments if available
+    // XML comments if available
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
@@ -114,14 +112,8 @@ builder.Services.AddSwaggerGen(c =>
         c.IncludeXmlComments(xmlPath);
     }
 
-    // Custom schema for file upload operations
-    c.MapType<IFormFile>(() => new OpenApiSchema
-    {
-        Type = "string",
-        Format = "binary"
-    });
-
-    // Custom operation filter for file uploads
+    // File upload schema and operation filter
+    c.MapType<IFormFile>(() => new OpenApiSchema { Type = "string", Format = "binary" });
     c.OperationFilter<FileUploadOperationFilter>();
 });
 
@@ -135,18 +127,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
 app.UseCors("AllowViteFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Serve static files from wwwroot
-app.UseDefaultFiles();
-app.UseStaticFiles();
 
 app.MapControllers();
 
 app.MapHub<NotificationHub>("/hubs/notifications");
-// Fallback to index.html for SPA routing
+
+// Serve React SPA fallback
 app.MapFallbackToFile("index.html");
 
 app.Run();

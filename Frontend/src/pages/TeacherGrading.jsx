@@ -32,15 +32,14 @@ export default function TeacherGrading() {
   const [filter, setFilter] = useState("all");
   const [gradeForm, setGradeForm] = useState({ marks: "", maxMarks: 100, feedback: "", status: "pending" });
   const [error, setError] = useState("");
-
+const BASE_HOST = "http://localhost:5036"
   const isTeacher = user?.role?.toString().toLowerCase() === "teacher";
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError("");
-      try
-      {
+      try {
         if (!labId) throw new Error("Missing labId in route");
         const labData = await api.getLab(labId);
         setLab(labData);
@@ -55,7 +54,7 @@ export default function TeacherGrading() {
           else setSubmissions([]);
         }
       }
-      catch(err) {
+      catch (err) {
         console.error(err);
         setError(err.message || "Failed to load data");
       } finally {
@@ -177,6 +176,20 @@ export default function TeacherGrading() {
     }
   };
 
+
+// inside your LabDetail component
+async function downloadReport(format = "pdf") {
+  try {
+    const url = `${BASE_HOST}/api/attendance/report/${labId}?format=${encodeURIComponent(format)}`;
+    // Suggest file name
+    const filename = `attendance_report_${labId}.${format === "pdf" ? "pdf" : "csv"}`;
+    await api.downloadFileWithAuth(url, filename);
+  } catch (err) {
+    console.log({ type: "error", text: err.message || "Download failed" });
+  }
+}
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -186,16 +199,21 @@ export default function TeacherGrading() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen w-full bg-slate-50">
+      <div className="max-w-7xl  p-6 space-y-6">
+        <div className="flex items-center justify-betwee  w-full">
+          <div className="flex items-center n w-full gap-4">
+            
             <button onClick={() => navigate(`/labs/${labId}`)} className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"><ArrowLeft className="w-5 h-5" /></button>
-            <div>
+            <div className="min-w-fit">
               <h1 className="text-3xl font-bold text-slate-900">Submissions</h1>
               <p className="text-slate-600 mt-1">{lab?.subject?.name ?? lab?.Subject?.Name ?? "Lab"} • {submissions.length} submission(s)</p>
             </div>
           </div>
+          <div className=" flex justify-center items-center flex-row gap-4">
+             <button onClick={() => downloadReport("csv")} className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">Download CSV</button>
+                <button onClick={() => downloadReport("pdf")} className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">Download PDF</button>
+         </div>
         </div>
 
         {error && <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded">{error}</div>}
@@ -210,13 +228,13 @@ export default function TeacherGrading() {
               { value: "graded", label: "Graded" },
             ].map((option) => (
               <button key={option.value} onClick={() => setFilter(option.value)} className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors text-center ${filter === option.value ? "bg-blue-600 text-white" : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"}`}>
-                {option.label} <span className="ml-2 text-xs opacity-75">({option.value=="all"?submissions.length:submissions.filter((i)=>i.status==option.value).length})</span>
+                {option.label} <span className="ml-2 text-xs opacity-75">({option.value == "all" ? submissions.length : submissions.filter((i) => i.status == option.value).length})</span>
               </button>
             ))}
           </div>
         )}
-{console.log(submissions)
-}
+        {console.log(submissions)
+        }
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <Card>
@@ -320,7 +338,6 @@ export default function TeacherGrading() {
                 <div className="text-center py-8"><FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" /><p className="text-slate-600">Select a submission to view details</p></div>
               </Card>
             )}
-
             <Card>
               <h3 className="text-lg font-semibold text-slate-900 mb-4">Grading Progress</h3>
               <div className="space-y-3">
