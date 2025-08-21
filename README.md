@@ -28,7 +28,7 @@ A full-stack web application backend built with .NET Core and MongoDB to manage 
 |-----------------------------|-----------------------------|-----------------------------|
 | ![](./livedemoimages/4.png) | ![](./livedemoimages/5.png) | ![](./livedemoimages/6.png) |
 | ![](./livedemoimages/7.png) | ![](./livedemoimages/8.png) | ![](./livedemoimages/9.png) |
-| ![](./livedemoimages/10.png) | 
+| ![](./livedemoimages/10.png) | ![](./livedemoimages/11.png) | ![](./livedemoimages/12.png) |
 
 ---
 
