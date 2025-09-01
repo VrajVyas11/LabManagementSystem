@@ -3,12 +3,12 @@ using LabManagementBackend.Services;
 using LabManagementBackend.Filters;
 using LabManagementBackend.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,16 +16,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 // Register CORS policy
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowViteFrontend", policy =>
-    {
-        policy.WithOrigins("http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
-});
+// builder.Services.AddCors(options =>
+// {
+//     options.AddPolicy("AllowViteFrontend", policy =>
+//     {
+//         policy.WithOrigins("http://localhost:5173")
+//               .AllowAnyHeader()
+//               .AllowAnyMethod()
+//               .AllowCredentials();
+//     });
+// });
 
 // Configure MongoDB settings
 builder.Services.Configure<MongoDbSettings>(
@@ -137,7 +137,25 @@ app.MapControllers();
 
 app.MapHub<NotificationHub>("/hubs/notifications");
 
-// Serve React SPA fallback
-app.MapFallbackToFile("index.html");
+// -------------------
+// Serve Frontend dist
+// -------------------
+var frontendPath = Path.Combine(Directory.GetCurrentDirectory(), "Frontend", "dist");
+app.UseDefaultFiles(new DefaultFilesOptions
+{
+    FileProvider = new PhysicalFileProvider(frontendPath),
+    DefaultFileNames = new List<string> { "index.html" }
+});
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(frontendPath),
+    RequestPath = ""
+});
+
+// SPA fallback -> always return index.html for unknown routes
+app.MapFallbackToFile("index.html", new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(frontendPath)
+});
 
 app.Run();
