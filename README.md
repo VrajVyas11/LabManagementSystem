@@ -1,236 +1,268 @@
-# Lab Management System - MSU FoTE MCA Department
+# Lab Management System (MSU FoTE · MCA)
 
-A full-stack web application backend built with .NET Core and MongoDB to manage lab attendance, submissions, and assessments for the MCA department at MSU Faculty of Technology. The backend serves a React frontend as static files, providing a seamless single URL experience.
 
----
+A full-stack Lab Management System for the MSU Faculty of Technology (MCA).
+Backend: .NET Web API + MongoDB. Frontend: React (Vite) + Tailwind. JWT authentication, role-based access (Teacher / Student), lab scheduling, attendance, submissions, grading, and in-app notifications.
 
-## Table of Contents
-
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Configuration](#configuration)
-- [Running the Application](#running-the-application)
-- [API Endpoints](#api-endpoints)
-- [Authentication & Authorization](#authentication--authorization)
-- [File Uploads](#file-uploads)
-- [Deployment](#deployment)
-- [Security Considerations](#security-considerations)
-- [Contributing](#contributing)
-- [License](#license)
-
----
-## 📸 Live Demo
-
-| ![](./livedemoimages/1.png) | ![](./livedemoimages/2.png) | ![](./livedemoimages/3.png) |
-|-----------------------------|-----------------------------|-----------------------------|
-| ![](./livedemoimages/4.png) | ![](./livedemoimages/5.png) | ![](./livedemoimages/6.png) |
-| ![](./livedemoimages/7.png) | ![](./livedemoimages/8.png) | ![](./livedemoimages/9.png) |
-| ![](./livedemoimages/10.png) | ![](./livedemoimages/11.png) | ![](./livedemoimages/12.png) |
+Live Demo : https://labmanagementsystem-ccub.onrender.com
 
 ---
 
-## Features
+Key Features
 
-- **User Roles:** Teacher and Student with role-based access control.
-- **Lab Management:** Teachers can create labs with start/end times and submission deadlines.
-- **Attendance Tracking:** Students clock in/out; attendance is validated based on time spent.
-- **Submission Handling:** Students upload lab work in various formats (PDF, DOCX, images).
-- **Assessment:** Teachers can view submissions, provide feedback, and assign marks.
-- **Notifications:** (Planned) Notifications for lab start and submission deadlines.
-- **Single URL Deployment:** React frontend served as static files from the backend.
-- **Swagger API Documentation:** Interactive API docs with JWT authentication support.
-
----
-
-## Tech Stack
-
-- **Backend:** .NET 7 Web API
-- **Database:** MongoDB (NoSQL)
-- **Authentication:** JWT (JSON Web Tokens)
-- **API Documentation:** Swagger (Swashbuckle)
-- **File Uploads:** Multipart/form-data support
-- **Frontend:** React (served statically from backend)
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- [.NET 7 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/7.0)
-- [MongoDB](https://www.mongodb.com/try/download/community) (local or Atlas cluster)
-- Node.js & npm (for building React frontend)
-- Optional: Postman or similar API client for testing
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/yourusername/lab-management-backend.git
-   cd lab-management-backend
-   ```
-
-2. **Restore NuGet packages**
-
-   ```bash
-   dotnet restore
-   ```
-
-3. **Install required .NET packages**
-
-   (If not already installed)
-
-   ```bash
-   dotnet add package Microsoft.AspNetCore.Mvc.NewtonsoftJson
-   dotnet add package Swashbuckle.AspNetCore.Filters
-   ```
-
-4. **Build the project**
-
-   ```bash
-   dotnet build
-   ```
+- Role-based users: Teacher and Student
+- Teacher:
+	- Create labs (subject, start/end times, submission deadline)
+	- View lab submissions, download files, grade & provide feedback
+	- Manage labs
+- Student:
+	- Clock-in / Clock-out for attendance during lab hours
+	- Upload submissions (multipart/form-data)
+	- View own submission status, marks & feedback (read-only)
+- Notifications:
+	- Per-student notifications when teacher creates a lab (fallback broadcast)
+	- Background worker sends "starting soon" and "lab ended" notifications (deduped)
+	- Read / mark-all-read endpoints and frontend integration (Navbar)
+- Reports:
+	- Teacher dashboard with pending submission counts and per-lab summary
+- File handling: upload, store and download (FileHelper + streaming)
+- Swagger/OpenAPI for API exploration and testing
+- Static React build served from backend (wwwroot) for single-URL deployment
 
 ---
 
-## Configuration
+Tech Stack
 
-### appsettings.json
-
-Create or update `appsettings.json` with your MongoDB connection and JWT settings:
-
-```json
-{
-  "MongoDbSettings": {
-    "ConnectionString": "your_mongodb_connection_string_here",
-    "DatabaseName": "LabManagementDb"
-  },
-  "JwtSettings": {
-    "SecretKey": "your_very_strong_secret_key_here",
-    "Issuer": "LabManagementAPI",
-    "Audience": "LabManagementClient",
-    "ExpiryMinutes": 60
-  },
-  "AllowedHosts": "*"
-}
-```
-
-**Important:**  
-- Do **NOT** commit your real secrets to public repos. Use environment variables or user secrets for local development.
-- For production, configure environment variables to override these settings.
+- Backend: .NET 7 Web API
+- Database: MongoDB
+- Auth: JWT
+- Frontend: React (Vite) + Tailwind CSS
+- API Docs: Swagger (Swashbuckle)
+- Background jobs: .NET HostedService (Lab reminder/ended notifications)
 
 ---
 
-## Running the Application
+Prerequisites
 
-1. **Build React frontend**
-
-   Navigate to your React app directory and run:
-
-   ```bash
-   npm run build
-   ```
-
-2. **Copy React build files**
-
-   Copy the contents of the React `build` folder into the backend's `wwwroot` folder:
-
-   ```
-   LabManagementBackend/wwwroot/
-   ```
-
-3. **Run the backend**
-
-   ```bash
-   dotnet run
-   ```
-
-4. **Access the app**
-
-   - React frontend: `https://localhost:<port>/`
-   - Swagger UI: `https://localhost:<port>/swagger`
+- .NET 7 SDK
+- MongoDB (local or Atlas)
+- Node.js + npm (for frontend dev/build)
+- Optional: Postman / HTTP client
 
 ---
 
-## API Endpoints
+Quickstart — Backend
 
-| Method | Endpoint                  | Description                          | Auth Required | Role      |
-|--------|---------------------------|------------------------------------|---------------|-----------|
-| POST   | `/api/auth/register`      | Register new user                   | No            | -         |
-| POST   | `/api/auth/login`         | Login and get JWT token             | No            | -         |
-| GET    | `/api/users/me`           | Get current user profile            | Yes           | Student/Teacher |
-| GET    | `/api/users`              | Get all users                      | Yes           | Teacher   |
-| POST   | `/api/labs`               | Create a new lab                   | Yes           | Teacher   |
-| GET    | `/api/labs/{id}`          | Get lab details by ID              | Yes           | Student/Teacher |
-| POST   | `/api/attendance/clockin`| Student clock in for a lab         | Yes           | Student   |
-| POST   | `/api/attendance/clockout`| Student clock out for a lab        | Yes           | Student   |
-| POST   | `/api/submissions`        | Upload lab submission (multipart) | Yes           | Student   |
+1. 
 
----
 
-## Authentication & Authorization
+Clone repository
 
-- Uses JWT tokens.
-- Include token in `Authorization` header as:  
-  `Authorization: Bearer <token>`
-- Role-based access control enforced on endpoints.
 
----
 
-## File Uploads
+	git clone https://github.com/yourorg/lab-management.git
+	cd lab-management
 
-- Supported formats: PDF, DOCX, DOC, PNG, JPG, JPEG.
-- Max file size: 50 MB (configurable).
-- Upload via multipart/form-data to `/api/submissions`.
 
----
 
-## Deployment
+2. 
+Configure appsettings.json (example)
 
-- Build and publish backend:
 
-  ```bash
-  dotnet publish -c Release
-  ```
 
-- Deploy to any cloud provider supporting .NET (Azure, AWS, DigitalOcean, etc.).
-- Configure environment variables for secrets in your cloud environment.
-- Serve React build files from `wwwroot` folder.
-- Use HTTPS in production.
+	{
+	  "MongoDbSettings": {
+	    "ConnectionString": "mongodb://localhost:27017",
+	    "DatabaseName": "LabManagementDb"
+	  },
+	  "JwtSettings": {
+	    "SecretKey": "replace_with_a_long_random_secret",
+	    "Issuer": "LabManagementAPI",
+	    "Audience": "LabManagementClient",
+	    "ExpiryMinutes": 1440
+	  },
+	  "AllowedHosts": "*"
+	}
 
----
 
-## Security Considerations
+	- Use environment variables or user secrets in development; never commit secrets.
+3. 
+Restore & build
 
-- Never commit secrets to source control.
-- Use HTTPS in production.
-- Validate and sanitize all inputs.
-- Limit file upload size and allowed types.
-- Use strong JWT secret keys.
-- Regularly update dependencies.
 
----
 
-## Contributing
+	dotnet restore
+	dotnet build
 
-Contributions are welcome! Please:
 
-- Fork the repo
-- Create feature branches
-- Submit pull requests with clear descriptions
-- Report issues or suggest features
+
+4. 
+Run
+
+
+
+	dotnet run
+
+
+	- API will be available at http://localhost:5036 (or port shown in logs).
+	- Swagger: http://localhost:5036/swagger
 
 ---
 
-## License
+Quickstart — Frontend (development)
 
-This project is licensed under the MIT License.
+1. From frontend directory:
+
+	cd web   # adjust path to your React app
+	npm install
+	npm run dev
+
+
+
+2. For production build:
+
+	npm run build
+	# copy the build output to backend/wwwroot or configure deployment pipeline
+
+
+
 
 ---
 
+Configuration Notes
 
-*Thank you for using the Lab Management System!*
+- api client (frontend) uses request(path, opts) and relative URLs by default (.e.g request('/api/labs')). You may switch to a named BASE_HOST variable if deploying frontend and backend on different hosts.
+- See src/api.js for all frontend routes and defensive checks (e.g. getSubmissions/labId validation, getMySubmission for students).
+
+---
+
+Important API Endpoints (summary)
+
+
+Authentication
+
+
+- POST /api/auth/register — register user
+- POST /api/auth/login — login (returns JWT)
+Users
+
+
+- GET /api/users/me — get current profile
+- PUT /api/users/me — update profile (name, department, contact, bio)
+- GET /api/users — list users (Teacher only)
+Subjects
+
+
+- GET /api/subjects — list subjects (used by Create Lab dropdown)
+Labs
+
+
+- POST /api/labs — create lab (Teacher only)
+- GET /api/labs — list aggregated labs (subject + teacher embedded)
+- GET /api/labs/{id} — aggregated lab by id
+Attendance
+
+
+- POST /api/attendance/clockin — student clock-in
+- POST /api/attendance/clockout — student clock-out
+- GET /api/attendance/report/{labId} — attendance report (Teacher)
+Submissions
+
+
+- POST /api/submissions — Upload submission (Student, multipart/form-data)
+- GET /api/submissions/lab/{labId} — list submissions for a lab (Teacher)
+- GET /api/submissions/student/{studentId} — submissions by student
+- GET /api/submissions/my?labId={labId} — student's own submission for a lab
+- POST /api/submissions/{submissionId}/grade — grade submission (Teacher only)
+- GET /api/submissions/{id}/download — download submission (streams file)
+Notifications
+
+
+- GET /api/notifications — list notifications for current user (includes broadcast)
+- POST /api/notifications/{id}/read — mark as read
+- POST /api/notifications/read-all — mark all read
+- DELETE /api/notifications/{id} — delete notification
+Reports
+
+
+- GET /api/reports/teacher/dashboard — teacher dashboard summary
+- GET /api/reports/lab/{labId} — lab analytics (if implemented)
+- GET /api/reports/student/{studentId} — student analytics (if implemented)
+Settings
+
+
+- GET/PUT /api/settings
+- Notification preferences: GET/PUT /api/notification-preferences
+
+---
+
+Notifications — how they work
+
+- On lab creation:
+	- Backend looks up subject name (via SubjectService) and enrolled students (User.SubjectIds).
+	- Creates per-student Notification documents; if no students found, creates a broadcast Notification.
+- Background worker (LabReminderBackgroundService):
+	- Periodically checks labs and creates:
+		- "Starting soon" reminder (configurable minutes before start)
+		- "Lab ended" notification when end time passes
+	- Uses NotificationService.ExistsAsync(...) to avoid duplicates.
+- Frontend polls GET /api/notifications and displays unread counts in Navbar; clicking a notification marks it read and navigates to the relevant entity.
+
+---
+
+File storage (uploads/downloads)
+
+- Submission files stored by FileHelper (server):
+	- SaveFileAsync(IFormFile) — saves to server storage (e.g. wwwroot/uploads) and returns a file URL
+	- DeleteFile(fileUrl) — deletes file from storage
+	- GetFileStream(fileUrl) — returns stream for download endpoint
+- Download endpoint streams file with proper Authorization checks.
+
+---
+
+Security & Best Practices
+
+- Server-side authorization is authoritative. Keep [Authorize(Roles = "Teacher")] on grading endpoints.
+- Use environment secrets for JWT keys and DB connection strings in production.
+- Limit upload size and types in controllers (RequestFormLimits and size checks).
+- Sanitize user inputs and validate DTOs (e.g., CreateLabDto validation).
+- Use HTTPS in production and configure proper CORS policies.
+
+---
+
+Development tips & suggestions (improvements)
+
+- Add SignalR for real-time notifications (removes polling).
+- Add email/SMS notification delivery pipeline (use Notification documents as queue).
+- Add a searchable/paginated notifications endpoint and a notifications center UI.
+- Add admin UI for subject management and student enrollment (useful for per-subject notifications).
+- Add audit logging and monitoring (Serilog + Seq / ELK).
+- Add E2E tests for critical flows (login, create lab, submit, grade).
+- Add role management UI and multi-tenant features if needed.
+
+---
+
+Troubleshooting
+
+- If notifications collection is empty after creating labs:
+	- Ensure logged-in teacher is creating lab
+	- Ensure students have SubjectIds containing created subject id (otherwise broadcast created instead)
+	- Check backend logs for exceptions from NotificationService
+- If attendance endpoints 500:
+	- Confirm Lab documents are not malformed (use ReplaceOneAsync for updates)
+	- Check timezone handling when comparing UTC dates (server uses UTC in checks)
+- If frontend requests /api/... return 404/500:
+	- Verify backend is running and CORS configured for frontend origin
+	- Verify JWT token present in localStorage (key token) for protected endpoints
+
+---
+
+Contributing
+
+1. Fork the repo
+2. Create a branch: git checkout -b feat/your-feature
+3. Commit changes and push: git push origin feat/your-feature
+4. Open a pull request with a clear description
+
+---
+Thank you for viewing my project
