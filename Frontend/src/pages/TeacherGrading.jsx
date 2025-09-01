@@ -32,7 +32,7 @@ export default function TeacherGrading() {
   const [filter, setFilter] = useState("all");
   const [gradeForm, setGradeForm] = useState({ marks: "", maxMarks: 100, feedback: "", status: "pending" });
   const [error, setError] = useState("");
-const BASE_HOST = "http://localhost:5036"
+
   const isTeacher = user?.role?.toString().toLowerCase() === "teacher";
 
   useEffect(() => {
@@ -180,7 +180,7 @@ const BASE_HOST = "http://localhost:5036"
 // inside your LabDetail component
 async function downloadReport(format = "pdf") {
   try {
-    const url = `${BASE_HOST}/api/attendance/report/${labId}?format=${encodeURIComponent(format)}`;
+    const url = `/api/attendance/report/${labId}?format=${encodeURIComponent(format)}`;
     // Suggest file name
     const filename = `attendance_report_${labId}.${format === "pdf" ? "pdf" : "csv"}`;
     await api.downloadFileWithAuth(url, filename);

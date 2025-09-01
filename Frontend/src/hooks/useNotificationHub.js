@@ -14,7 +14,7 @@ export default function useNotificationHub(token) {
     if (!token) return;
 
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl(`http://localhost:5036/hubs/notifications`, {
+      .withUrl(`/hubs/notifications`, {
         accessTokenFactory: () => token,
       })
       .withAutomaticReconnect()
