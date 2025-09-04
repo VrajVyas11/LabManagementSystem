@@ -17,7 +17,8 @@ import {
 import Card from "../components/Card";
 import { api } from "../api";
 import useAuth from "../auth/useAuth";
-
+// const BASE_HOST="http://localhost:5036"
+const BASE_HOST="/"
 export default function TeacherGrading() {
   const { user } = useAuth();
   const params = useParams();
@@ -138,7 +139,7 @@ export default function TeacherGrading() {
       }
       // fallback
       const token = localStorage.getItem("token");
-      const downloadRes = await fetch(`${window.location.origin.replace(/:[0-9]+$/, ":5036")}/api/submissions/${submission.id}/download`, {
+      const downloadRes = await fetch(`${BASE_HOST}/api/submissions/${submission.id}/download`, {
         method: "GET",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -180,7 +181,7 @@ export default function TeacherGrading() {
 // inside your LabDetail component
 async function downloadReport(format = "pdf") {
   try {
-    const url = `/api/attendance/report/${labId}?format=${encodeURIComponent(format)}`;
+    const url = `${BASE_HOST}/api/attendance/report/${labId}?format=${encodeURIComponent(format)}`;
     // Suggest file name
     const filename = `attendance_report_${labId}.${format === "pdf" ? "pdf" : "csv"}`;
     await api.downloadFileWithAuth(url, filename);
