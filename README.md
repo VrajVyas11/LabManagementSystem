@@ -29,6 +29,16 @@ Key Features
 - Swagger/OpenAPI for API exploration and testing
 - Static React build served from backend (wwwroot) for single-URL deployment
 
+
+---
+## 📸 Live Demo
+
+| ![](./livedemoimages/1.png) | ![](./livedemoimages/2.png) | ![](./livedemoimages/3.png) |
+|-----------------------------|-----------------------------|-----------------------------|
+| ![](./livedemoimages/4.png) | ![](./livedemoimages/5.png) | ![](./livedemoimages/6.png) |
+| ![](./livedemoimages/7.png) | ![](./livedemoimages/8.png) | ![](./livedemoimages/9.png) |
+| ![](./livedemoimages/10.png) | ![](./livedemoimages/11.png) | ![](./livedemoimages/12.png) |
+
 ---
 
 Tech Stack
