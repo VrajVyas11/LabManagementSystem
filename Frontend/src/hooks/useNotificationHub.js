@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import * as signalR from "@microsoft/signalr";
 // const BASE_HOST = "http://localhost:5036"
-const BASE_HOST="/"
+const BASE_HOST=""
 export default function useNotificationHub(token) {
   const [notifications, setNotifications] = useState([]);
   const connectionRef = useRef(null);

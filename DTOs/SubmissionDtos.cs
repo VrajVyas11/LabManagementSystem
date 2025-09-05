@@ -1,5 +1,6 @@
 // File: DTOs/SubmissionDtos.cs
 using System.ComponentModel.DataAnnotations;
+using LabManagementBackend.Models;
 
 namespace LabManagementBackend.DTOs
 {
@@ -27,7 +28,7 @@ namespace LabManagementBackend.DTOs
         public long? FileSize { get; set; }
     }
 
-       public class UploadSubmissionRequest
+    public class UploadSubmissionRequest
     {
         [Required]
         public IFormFile File { get; set; } = null!;
@@ -69,4 +70,38 @@ namespace LabManagementBackend.DTOs
 
         public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
     }
+    
+        public class SubmissionDownloadDtos
+    {
+        public string Id { get; set; } = string.Empty;
+
+        [Required]
+        public string LabId { get; set; } = string.Empty;
+
+        [Required]
+        public string StudentId { get; set; } = string.Empty;
+
+        [Required]
+        public string FileUrl { get; set; } = string.Empty;
+
+        public DateTime SubmittedAt { get; set; }
+
+        public string? Feedback { get; set; }
+
+        public int? Marks { get; set; }
+
+        public string? FileName { get; set; }
+
+        public long? FileSize { get; set; }
+
+        // New: populated by controller/service when returning to client
+        public string? StudentName { get; set; }
+        public string? Email { get; set; }
+
+        public static implicit operator SubmissionDownloadDtos(Submission v)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
 }

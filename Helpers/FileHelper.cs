@@ -1,3 +1,6 @@
+// Helpers/FileHelper.cs (example)
+using System.IO;
+using Microsoft.AspNetCore.StaticFiles;
 public static class FileHelper
 {
     private static string StorageRoot => Path.Combine(Directory.GetCurrentDirectory(), "uploads");
@@ -38,5 +41,15 @@ public static class FileHelper
     {
         if (string.IsNullOrWhiteSpace(fileUrl)) return null;
         return Path.GetFileName(fileUrl);
+    }
+        public static string? GetContentTypeFromFileName(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName)) return null;
+        var provider = new FileExtensionContentTypeProvider();
+        if (provider.TryGetContentType(fileName, out var contentType))
+        {
+            return contentType;
+        }
+        return "application/octet-stream";
     }
 }

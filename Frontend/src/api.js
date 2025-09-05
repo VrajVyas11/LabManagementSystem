@@ -1,7 +1,8 @@
 // src/api.js
 // const BASE_HOST = "http://localhost:5036";
-const BASE_HOST="/"
-const base = ""; // keep empty so full URLs are used below
+const BASE_HOST = ""
+
+const base = ""; // keep empty so full URLs are used
 
 async function request(path, opts = {}) {
   const headers = opts.headers || {};
@@ -28,6 +29,62 @@ async function request(path, opts = {}) {
     throw new Error(message);
   }
   return data;
+}
+
+// Helper: fetch blob with auth and correct header
+async function fetchBlobWithAuth(url) {
+  const token = localStorage.getItem("token");
+  const headers = token ? { Authorization: `Bearer ${token}`, Accept: "application/pdf, image/*, application/octet-stream, */*" } : { Accept: "application/pdf, image/*, application/octet-stream, */*" };
+
+  // Normalize url to absolute
+  const fullUrl = url.startsWith("http") ? url : url.startsWith("/") ? `${BASE_HOST}${url}` : `${BASE_HOST}/${url}`;
+
+  const res = await fetch(fullUrl, {
+    method: "GET",
+    headers,
+    // important: do not set credentials mode unless needed. Keep default.
+  });
+
+  // If unauthorized, forward meaningful message
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("Unauthorized");
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    let data;
+    try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+    const message = data?.message || res.statusText;
+    throw new Error(message);
+  }
+
+  const blob = await res.blob();
+  return blob;
+}
+
+// Return a blob URL for embedding (also returns blob)
+async function getBlobUrlForSubmission(submissionId) {
+  if (!submissionId) throw new Error("submissionId required");
+  const url = `/api/submissions/${encodeURIComponent(submissionId)}/download`;
+  const blob = await fetchBlobWithAuth(url);
+  const blobUrl = window.URL.createObjectURL(blob);
+  return { blobUrl, blob };
+}
+
+// Force-download a submission file (saves)
+async function downloadSubmissionFile(submissionId, suggestedFilename) {
+  if (!submissionId) throw new Error("submissionId required");
+  const url = `${BASE_HOST}/api/submissions/${encodeURIComponent(submissionId)}/download`;
+  const blob = await fetchBlobWithAuth(url);
+  const blobUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = suggestedFilename || "submission";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(blobUrl);
+  return true;
 }
 
 export const api = {
@@ -61,17 +118,17 @@ export const api = {
     request(`${BASE_HOST}/api/attendance/clockout`, { method: "POST", body: JSON.stringify({ labId }) }),
   getAttendanceReport: (labId) => request(`${BASE_HOST}/api/attendance/report/${labId}`),
   getStudentAttendance: (studentId) => request(`${BASE_HOST}/api/attendance/student/${studentId}`),
-  // src/api.js (add near bottom of file)
-  // Download a file (CSV/PDF) with Authorization header and force download
+
+  // File downloads / previews
   downloadFileWithAuth: async (url, fileName) => {
     const token = localStorage.getItem("token");
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const res = await fetch(url.startsWith("http") ? BASE_HOST + url :  url, {
+    const headers = token ? { Authorization: `Bearer ${token}`, Accept: "*/*" } : { Accept: "*/*" };
+    const fullUrl = url.startsWith("http") ? url : url.startsWith("/") ? `${BASE_HOST}${url}` : `${BASE_HOST}/${url}`;
+    const res = await fetch(fullUrl, {
       method: "GET",
       headers,
     });
     if (!res.ok) {
-      // Try to parse JSON error body
       const text = await res.text();
       let data;
       try { data = text ? JSON.parse(text) : null; } catch { data = text; }
@@ -89,6 +146,7 @@ export const api = {
     window.URL.revokeObjectURL(blobUrl);
     return true;
   },
+
   // Submissions
   submit: (labId, file) => {
     const form = new FormData();
@@ -98,11 +156,10 @@ export const api = {
   },
   getMySubmission: (labId) => {
     if (!labId) return Promise.reject(new Error("labId required"));
-    return request(`${BASE_HOST}/api/submissions/my?labId=${encodeURIComponent(labId)}`)
+    return request(`${BASE_HOST}/api/submissions/my?labId=${encodeURIComponent(labId)}`);
   },
   getSubmissions: (labId) => {
     if (!labId) {
-      // Defensive: avoid requesting /lab/undefined
       return Promise.reject(new Error("labId is required for getSubmissions"));
     }
     return request(`${BASE_HOST}/api/submissions/lab/${labId}`);
@@ -110,7 +167,10 @@ export const api = {
   getStudentSubmissions: (studentId) => request(`${BASE_HOST}/api/submissions/student/${studentId}`),
   gradeSubmission: (submissionId, payload) =>
     request(`${BASE_HOST}/api/submissions/${submissionId}/grade`, { method: "POST", body: JSON.stringify(payload) }),
-  downloadSubmission: (submissionId) => request(`${BASE_HOST}/api/submissions/${submissionId}/download`),
+
+  // New: get blob URL for inline preview and forced download
+  getSubmissionBlobUrl: (submissionId) => getBlobUrlForSubmission(submissionId),
+  downloadSubmissionFile: (submissionId, suggestedFilename) => downloadSubmissionFile(submissionId, suggestedFilename),
 
   // Notifications
   getNotifications: () => request(`${BASE_HOST}/api/notifications`),
