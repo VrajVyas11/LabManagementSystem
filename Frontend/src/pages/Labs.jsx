@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Clock, Calendar, Upload, Timer, CheckCircle, XCircle, BookOpen } from "lucide-react";
+import { Clock, Calendar, Upload, Timer, CheckCircle, XCircle, BookOpen, SquareArrowOutUpRight } from "lucide-react";
 import Card from "../components/Card";
 import { api } from "../api";
 
@@ -32,7 +32,7 @@ const StatusBadge = ({ status, children }) => {
   };
   
   return (
-    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${styles[status]}`}>
+    <span className={`inline-flex ml-3 items-center gap-3 px-3 py-1 rounded-lg text-sm font-medium border ${styles[status]}`}>
       {children}
     </span>
   );
@@ -112,23 +112,29 @@ export default function Labs() {
                 const submissionStatus = getSubmissionStatus(lab.submissionDeadline);
                 
                 return (
-                  <div key={lab.id} className="flex items-center justify-between p-6 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
+                  <div key={lab.id} 
+                  style={{
+                    borderRadius:999,
+                    borderTopRightRadius:300,
+                  borderBottomRightRadius:300
+                  }}
+                  className="flex items-center bg-blue-50/50 justify-between p-6 border border-slate-200  hover:border-slate-300 transition-colors">
                     <div className="flex items-center gap-6">
-                      <div className="text-center min-w-[60px]">
-                        <div className="text-2xl font-bold text-slate-900">
+                      <div className="text-center bg-blue-500/20 rounded-full p-3 px-7 min-w-[60px]">
+                        <div className="text-3xl font-bold text-slate-900">
                           {new Date(lab.startTime).getDate()}
                         </div>
-                        <div className="text-xs text-slate-600 uppercase">
+                        <div className="text-sm text-slate-600 uppercase">
                           {new Date(lab.startTime).toLocaleDateString('en', { month: 'short' })}
                         </div>
                       </div>
                       <div>
-                        <h4 className="text-lg font-semibold text-slate-900">{lab.subject?.name || 'Unnamed Lab'}</h4>
-                        <p className="text-slate-600 flex items-center gap-2">
+                        <h4 className="text-2xl font-semibold text-slate-900">{lab.subject?.name || 'Unnamed Lab'}</h4>
+                        <p className="text-slate-600 flex items-center mt-1 gap-2">
                           <BookOpen className="w-4 h-4" />
                           {lab.subject?.code || 'N/A'} • {lab.teacher?.name || 'Unknown'}
                         </p>
-                        <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
+                        <p className="text-sm text-slate-500 flex items-center gap-2 ">
                           <Clock className="w-4 h-4" />
                           {new Date(lab.startTime).toLocaleString()}
                         </p>
@@ -136,22 +142,22 @@ export default function Labs() {
                     </div>
                     <div className="text-right space-y-2">
                       <StatusBadge status={status}>
-                        {status === 'upcoming' && <Clock className="w-3 h-3" />}
-                        {status === 'active' && <Timer className="w-3 h-3" />}
-                        {status === 'ended' && <CheckCircle className="w-3 h-3" />}
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                        {status === 'upcoming' && <Clock className="w-5 h-5" />}
+                        {status === 'active' && <Timer className="w-5 h-5" />}
+                        {status === 'ended' && <CheckCircle className="w-5 h-5" />}
+                        <>Lab {status.charAt(0).toUpperCase() + status.slice(1)}</>
                       </StatusBadge>
                       {status === 'ended' && (
                         <StatusBadge status={submissionStatus}>
-                          {submissionStatus === 'open' ? <Upload className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                          {submissionStatus === 'open' ? <Upload className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
                           Submissions {submissionStatus}
                         </StatusBadge>
                       )}
                       <Link 
                         to={`/labs/${lab.id}`} 
-                        className="block bg-blue-600 text-center hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                        className=" bg-blue-600 w-fit flex justify-center flex-row gap-3 justify-self-end text-center hover:bg-blue-700 text-white px-16 py-4 rounded-lg text-sm font-medium transition-colors"
                       >
-                        Open Lab
+                        Open Lab Session Details <SquareArrowOutUpRight className="w-5 h-5"/>
                       </Link>
                     </div>
                   </div>

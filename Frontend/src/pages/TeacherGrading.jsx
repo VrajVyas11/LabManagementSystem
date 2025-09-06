@@ -1,5 +1,5 @@
 // src/pages/TeacherGrading.jsx
-import React, { useState, useEffect,useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Download,
@@ -62,9 +62,16 @@ export default function TeacherGrading() {
           const subs = await api.getSubmissions(labId);
           setSubmissions((subs || []).map(normalizeSubmission));
         } else {
+          // Student can only see their own submission
           const sub = await api.getMySubmission(labId);
-          if (sub) setSubmissions([normalizeSubmission(sub)]);
-          else setSubmissions([]);
+          if (sub) {
+            const normalizedSub = normalizeSubmission(sub);
+            setSubmissions([normalizedSub]);
+            // Auto-select the student's own submission
+            setSelectedSubmission(normalizedSub);
+          } else {
+            setSubmissions([]);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -214,27 +221,41 @@ export default function TeacherGrading() {
   // Preview file inline (create blob URL)
   const handlePreviewSubmission = useCallback(async (submission) => {
     setError("");
-    if (!submission?.id) return setError("Invalid submission");
+    if (!submission?.id || !submission?.fileUrl) {
+      setError("Invalid submission or no file available.");
+      return;
+    }
     setPreviewLoading(true);
     if (previewUrl) {
       try {
         window.URL.revokeObjectURL(previewUrl);
       } catch {
-        console.log("something went wrong")
+        console.log("Error revoking previous blob URL");
       }
       setPreviewUrl(null);
     }
     try {
-      const { blobUrl } = await api.getSubmissionBlobUrl(submission.id);
-      setPreviewUrl(blobUrl);
-      setShowPreview(true)
+      const fileExtension = submission.fileName?.toLowerCase().split('.').pop();
+      let previewUrl;
+
+      if (['doc', 'docx'].includes(fileExtension)) {
+        // Use Google Docs Viewer for .doc/.docx files
+        previewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(submission.fileUrl)}&embedded=true`;
+      } else {
+        // Fetch blob URL for PDFs and images
+        const { blobUrl } = await api.getSubmissionBlobUrl(submission.id);
+        previewUrl = blobUrl;
+      }
+
+      setPreviewUrl(previewUrl);
+      setShowPreview(true);
     } catch (err) {
       console.error("Preview failed:", err);
       setError(err.message || "Failed to load preview");
     } finally {
       setPreviewLoading(false);
     }
-  },[previewUrl]);
+  }, [previewUrl]);
 
   // UI helpers
   const getStatusColor = (status) => {
@@ -299,20 +320,22 @@ export default function TeacherGrading() {
               </p>
             </div>
           </div>
-          <div className=" flex justify-center items-center flex-row gap-4">
-            <button
-              onClick={() => downloadReport("csv")}
-              className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-            >
-              Download CSV
-            </button>
-            <button
-              onClick={() => downloadReport("pdf")}
-              className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
-            >
-              Download PDF
-            </button>
-          </div>
+          {isTeacher && (
+            <div className=" flex justify-center items-center flex-row gap-4">
+              <button
+                onClick={() => downloadReport("csv")}
+                className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Download CSV
+              </button>
+              <button
+                onClick={() => downloadReport("pdf")}
+                className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Download PDF
+              </button>
+            </div>
+          )}
         </div>
 
         {error && <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded">{error}</div>}
@@ -345,7 +368,9 @@ export default function TeacherGrading() {
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <Card>
-              <h2 className="text-xl font-semibold text-slate-900 mb-6">Student Submissions</h2>
+              <h2 className="text-xl font-semibold text-slate-900 mb-6">
+                {isTeacher ? "Student Submissions" : "Your Submission"}
+              </h2>
               {submissions.length === 0 ? (
                 <div className="text-center py-12">
                   <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
@@ -360,7 +385,7 @@ export default function TeacherGrading() {
                           key={submission.id}
                           className={`p-4 border-2 rounded-xl ${selectedSubmission?.id === submission.id ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-slate-300"
                             }`}
-                          onClick={() => setSelectedSubmission(submission)}
+                          onClick={() => isTeacher && setSelectedSubmission(submission)}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -388,22 +413,54 @@ export default function TeacherGrading() {
 
                         {previewUrl && showPreview && (
                           <div className="mb-6">
-                            <div className=" flex flex-row w-full justify-between items-center">
-                              <span className=" flex flex-row w-full justify-start items-center gap-3 my-5 font-semibold">
+                            <div className="flex flex-row w-full justify-between items-center">
+                              <span className="flex flex-row w-full justify-start items-center gap-3 my-5 font-semibold">
                                 <FileScan className="w-7 h-7" />
                                 Submission Preview
                               </span>
-                              <button
-                                onClick={() => { setShowPreview(prev => !prev) }}><X className="w-5 h-5" /></button>
+                              <button onClick={() => setShowPreview(false)}>
+                                <X className="w-5 h-5" />
+                              </button>
                             </div>
                             <div className="border rounded overflow-hidden" style={{ minHeight: 400 }}>
-                              {selectedSubmission.fileName && selectedSubmission.fileName.toLowerCase().endsWith(".pdf") ? (
-                                <iframe src={previewUrl} title="Submission preview" className="w-full h-[600px]" />
+                              {submission.fileName?.toLowerCase().endsWith(".pdf") ? (
+                                <iframe
+                                  src={previewUrl}
+                                  title="Submission preview"
+                                  className="w-full h-[600px]"
+                                />
+                              ) : submission.fileName?.toLowerCase().endsWith(".doc") ||
+                                submission.fileName?.toLowerCase().endsWith(".docx") ? (
+                                <iframe
+                                  src={previewUrl}
+                                  title="Submission preview"
+                                  className="w-full h-[600px]"
+                                />
+                              ) : submission.fileName?.toLowerCase().endsWith(".png") ||
+                                submission.fileName?.toLowerCase().endsWith(".jpg") ||
+                                submission.fileName?.toLowerCase().endsWith(".jpeg") ||
+                                submission.fileName?.toLowerCase().endsWith(".gif") ? (
+                                <img
+                                  src={previewUrl}
+                                  alt="submission preview"
+                                  className="w-full object-contain"
+                                />
                               ) : (
-                                <img src={previewUrl} alt="submission preview" className="w-full object-contain" />
+                                <div className="text-center py-8">
+                                  <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                                  <p className="text-slate-600">Preview not available for this file type</p>
+                                  <button
+                                    onClick={() => handleDownloadSubmission(submission)}
+                                    className="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                                  >
+                                    <Download className="w-4 h-4" /> Download Instead
+                                  </button>
+                                </div>
                               )}
                             </div>
-                            <div className="text-xs text-slate-500 mt-2">Tip: use Download to save the original file.</div>
+                            <div className="text-xs text-slate-500 mt-2">
+                              Tip: use Download to save the original file.
+                            </div>
                           </div>
                         )}
                       </div>
@@ -529,15 +586,17 @@ export default function TeacherGrading() {
               </Card>
             )}
 
-            <Card>
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Grading Progress</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm"><span className="text-slate-600">Total Submissions</span><span className="font-medium">{submissions.length}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-slate-600">Graded</span><span className="font-medium text-green-600">{submissions.filter((s) => s.status === "graded").length}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-slate-600">Pending</span><span className="font-medium text-yellow-600">{submissions.filter((s) => s.status === "pending").length}</span></div>
-                <div className="w-full bg-slate-200 rounded-full h-2 mt-3"><div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${submissions.length > 0 ? (submissions.filter((s) => s.status === "graded").length / submissions.length) * 100 : 0}%` }}></div></div>
-              </div>
-            </Card>
+            {isTeacher && (
+              <Card>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Grading Progress</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm"><span className="text-slate-600">Total Submissions</span><span className="font-medium">{submissions.length}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-slate-600">Graded</span><span className="font-medium text-green-600">{submissions.filter((s) => s.status === "graded").length}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-slate-600">Pending</span><span className="font-medium text-yellow-600">{submissions.filter((s) => s.status === "pending").length}</span></div>
+                  <div className="w-full bg-slate-200 rounded-full h-2 mt-3"><div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${submissions.length > 0 ? (submissions.filter((s) => s.status === "graded").length / submissions.length) * 100 : 0}%` }}></div></div>
+                </div>
+              </Card>
+            )}
           </div>
         </div>
       </div>

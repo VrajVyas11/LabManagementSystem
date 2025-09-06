@@ -1,5 +1,4 @@
 using LabManagementBackend.DTOs;
-using LabManagementBackend.Helpers;
 using LabManagementBackend.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -13,13 +12,15 @@ namespace LabManagementBackend.Services
     {
         private readonly IMongoCollection<Submission> _submissions;
         private readonly AttendanceService _attendanceService;
+        private readonly CloudinaryService _cloudinaryService;
 
-        public SubmissionService(IConfiguration config, AttendanceService attendanceService)
+        public SubmissionService(IConfiguration config, AttendanceService attendanceService, CloudinaryService cloudinaryService)
         {
             var client = new MongoClient(config["MongoDbSettings:ConnectionString"]);
             var db = client.GetDatabase(config["MongoDbSettings:DatabaseName"]);
             _submissions = db.GetCollection<Submission>("Submissions");
             _attendanceService = attendanceService;
+            _cloudinaryService = cloudinaryService;
         }
 
         public async Task<Submission> UploadSubmissionAsync(string studentId, string labId, IFormFile file)
@@ -31,16 +32,20 @@ namespace LabManagementBackend.Services
 
             if (existingSubmission != null)
             {
-                // Delete old file if it exists
-                FileHelper.DeleteFile(existingSubmission.FileUrl);
+                // Delete old file from Cloudinary if it exists
+                if (!string.IsNullOrWhiteSpace(existingSubmission.FileUrl))
+                {
+                    await _cloudinaryService.DeleteFileAsync(existingSubmission.FileUrl);
+                }
 
-                // Update existing submission
-                var fileUrl = await FileHelper.SaveFileAsync(file);
+                // Upload new file to Cloudinary
+                var fileUrl = await _cloudinaryService.UploadFileAsync(file);
 
                 existingSubmission.FileUrl = fileUrl;
                 existingSubmission.SubmittedAt = DateTime.UtcNow;
                 existingSubmission.FileName = file.FileName;
                 existingSubmission.FileSize = file.Length;
+                existingSubmission.UpdatedAt = DateTime.UtcNow;
 
                 await _submissions.ReplaceOneAsync(
                     s => s.Id == existingSubmission.Id,
@@ -54,9 +59,10 @@ namespace LabManagementBackend.Services
             }
             else
             {
-                // Create new submission
-                var fileUrl = await FileHelper.SaveFileAsync(file);
+                // Upload file to Cloudinary
+                var fileUrl = await _cloudinaryService.UploadFileAsync(file);
 
+                // Create new submission
                 var submission = new Submission
                 {
                     LabId = labId,
@@ -64,7 +70,9 @@ namespace LabManagementBackend.Services
                     FileUrl = fileUrl,
                     SubmittedAt = DateTime.UtcNow,
                     FileName = file.FileName,
-                    FileSize = file.Length
+                    FileSize = file.Length,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
                 };
 
                 await _submissions.InsertOneAsync(submission);
@@ -106,8 +114,11 @@ namespace LabManagementBackend.Services
             if (submission == null)
                 return false;
 
-            // Delete the file from storage
-            FileHelper.DeleteFile(submission.FileUrl);
+            // Delete the file from Cloudinary
+            if (!string.IsNullOrWhiteSpace(submission.FileUrl))
+            {
+                await _cloudinaryService.DeleteFileAsync(submission.FileUrl);
+            }
 
             // Delete from database
             var result = await _submissions.DeleteOneAsync(s => s.Id == submissionId);
@@ -127,7 +138,8 @@ namespace LabManagementBackend.Services
             var filter = Builders<Submission>.Filter.Eq(s => s.Id, submissionId);
             var update = Builders<Submission>.Update
                 .Set(s => s.Feedback, feedback)
-                .Set(s => s.Marks, marks);
+                .Set(s => s.Marks, marks)
+                .Set(s => s.UpdatedAt, DateTime.UtcNow);
 
             var result = await _submissions.UpdateOneAsync(filter, update);
 
@@ -140,11 +152,21 @@ namespace LabManagementBackend.Services
         }
         
         public async Task<Submission> GetSubmissionByIdAsync(string submissionId)
-{
-    return await _submissions.Find(s => s.Id == submissionId).FirstOrDefaultAsync();
-}
+        {
+            return await _submissions.Find(s => s.Id == submissionId).FirstOrDefaultAsync();
+        }
 
-// convenience name used in controller
-public async Task<Submission> GetSubmissionAsyncByIdAsync(string submissionId) => await GetSubmissionByIdAsync(submissionId);
+        // convenience name used in controller
+        public async Task<Submission> GetSubmissionAsyncByIdAsync(string submissionId) => await GetSubmissionByIdAsync(submissionId);
+
+        public string GetFileNameFromUrl(string fileUrl)
+        {
+            return _cloudinaryService.GetFileNameFromUrl(fileUrl);
+        }
+
+        public string GetContentTypeFromFileName(string fileName)
+        {
+            return _cloudinaryService.GetContentTypeFromFileName(fileName);
+        }
     }
 }

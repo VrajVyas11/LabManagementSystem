@@ -1,6 +1,6 @@
 // src/api.js
-// const BASE_HOST = "http://localhost:5036";
-const BASE_HOST = ""
+const BASE_HOST = "http://localhost:5036";
+// const BASE_HOST = ""
 
 const base = ""; // keep empty so full URLs are used
 
@@ -42,7 +42,6 @@ async function fetchBlobWithAuth(url) {
   const res = await fetch(fullUrl, {
     method: "GET",
     headers,
-    // important: do not set credentials mode unless needed. Keep default.
   });
 
   // If unauthorized, forward meaningful message
@@ -112,12 +111,12 @@ export const api = {
     request(`${BASE_HOST}/api/labs/${id}`, { method: "DELETE" }),
 
   // Attendance
-  clockIn: (labId) =>
-    request(`${BASE_HOST}/api/attendance/clockin`, { method: "POST", body: JSON.stringify({ labId }) }),
+  clockIn: ({ labId, lateReason }) =>
+    request(`${BASE_HOST}/api/attendance/clockin`, { method: "POST", body: JSON.stringify({ labId, lateReason }) }),
   clockOut: (labId) =>
     request(`${BASE_HOST}/api/attendance/clockout`, { method: "POST", body: JSON.stringify({ labId }) }),
-  getAttendanceReport: (labId) => request(`${BASE_HOST}/api/attendance/report/${labId}`),
-  getStudentAttendance: (studentId) => request(`${BASE_HOST}/api/attendance/student/${studentId}`),
+  getMyAttendance: (labId) => request(`${BASE_HOST}/api/attendance/my/${labId}`),
+  getLabAttendanceReport: (labId) => request(`${BASE_HOST}/api/attendance/report/${labId}`),
 
   // File downloads / previews
   downloadFileWithAuth: async (url, fileName) => {
@@ -128,6 +127,7 @@ export const api = {
       method: "GET",
       headers,
     });
+    console.log({token:token.slice(10),headers,fullUrl,res})
     if (!res.ok) {
       const text = await res.text();
       let data;

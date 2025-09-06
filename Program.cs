@@ -2,6 +2,7 @@ using LabManagementBackend.Helpers;
 using LabManagementBackend.Services;
 using LabManagementBackend.Filters;
 using LabManagementBackend.Hubs;
+using LabManagementBackend.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -16,20 +17,24 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 // Register CORS policy
-// builder.Services.AddCors(options =>
-// {
-//     options.AddPolicy("AllowViteFrontend", policy =>
-//     {
-//         policy.WithOrigins("http://localhost:5173")
-//               .AllowAnyHeader()
-//               .AllowAnyMethod()
-//               .AllowCredentials();
-//     });
-// });
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowViteFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 // Configure MongoDB settings
 builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("MongoDbSettings"));
+
+// Configure Cloudinary settings
+builder.Services.Configure<CloudinarySettings>(
+    builder.Configuration.GetSection("CloudinarySettings"));
 
 // Register your services
 builder.Services.AddSingleton<AuthService>();
@@ -38,6 +43,7 @@ builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<NotificationService>();
 builder.Services.AddSingleton<SubjectService>();
 builder.Services.AddSingleton<AttendanceService>();
+builder.Services.AddSingleton<CloudinaryService>();
 builder.Services.AddSingleton<SubmissionService>();
 builder.Services.AddSingleton<NotificationPreferenceService>();
 

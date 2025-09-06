@@ -3,13 +3,13 @@ using LabManagementBackend.Models;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 using System.Threading.Tasks;
+using MongoDB.Bson; // Add this import for ObjectId
 
 namespace LabManagementBackend.Services
 {
     public class NotificationPreferenceService
     {
         private readonly IMongoCollection<NotificationPreference> _preferences;
-
 
         public NotificationPreferenceService(IConfiguration config)
         {
@@ -25,6 +25,12 @@ namespace LabManagementBackend.Services
 
         public async Task<NotificationPreference> UpsertAsync(NotificationPreference pref)
         {
+            // Ensure the Id is set for new preferences
+            if (string.IsNullOrEmpty(pref.Id))
+            {
+                pref.Id = ObjectId.GenerateNewId().ToString();
+            }
+
             var filter = Builders<NotificationPreference>.Filter.Eq(p => p.UserId, pref.UserId);
             var options = new ReplaceOptions { IsUpsert = true };
             await _preferences.ReplaceOneAsync(filter, pref, options);

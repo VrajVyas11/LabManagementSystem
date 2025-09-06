@@ -1,2 +1,6 @@
 ConnectionString=somerandomconnectionstring
 JWTSecretKey=mynameisvrajvyasandidareyoutodecodethissecratkey
+DatabaseName=somebs
+CloudName= 
+ApiKey= 
+ApiSecret=

@@ -70,6 +70,7 @@ namespace LabManagementBackend.Controllers
             var totalCount = await _notificationService.CountAsync(filter);
             var notifications = await _notificationService.GetPagedAsync(filter, page, pageSize);
 
+
             return Ok(new
             {
                 totalCount,

@@ -5,6 +5,7 @@ using LabManagementBackend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using MongoDB.Bson; // Add this import
 
 namespace LabManagementBackend.Controllers
 {
@@ -29,7 +30,11 @@ namespace LabManagementBackend.Controllers
             var prefs = await _preferenceService.GetByUserIdAsync(userId);
             if (prefs == null)
             {
-                prefs = new NotificationPreference { UserId = userId };
+                prefs = new NotificationPreference
+                {
+                    Id = ObjectId.GenerateNewId().ToString(), // Set Id explicitly
+                    UserId = userId
+                };
                 await _preferenceService.UpsertAsync(prefs);
             }
             return Ok(prefs);
@@ -42,11 +47,14 @@ namespace LabManagementBackend.Controllers
                 return BadRequest("Invalid payload");
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
             var existing = await _preferenceService.GetByUserIdAsync(userId);
             if (existing == null)
             {
-                existing = new NotificationPreference { UserId = userId };
+                existing = new NotificationPreference
+                {
+                    Id = ObjectId.GenerateNewId().ToString(), // Set Id explicitly
+                    UserId = userId
+                };
             }
 
             existing.LabStarting = dto.LabStarting;

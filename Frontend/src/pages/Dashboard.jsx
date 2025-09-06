@@ -209,7 +209,11 @@ export default function Dashboard() {
               {activeLabs.map((lab) => (
                 <div key={lab.id} className="flex items-center justify-between p-4 bg-emerald-50 rounded-xl">
                   <div className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
+                    <div className="bg-emerald-500/20 rounded-full  relative minh-fit min-w-fit py-3.5 px-5">
+                      <span className="min-w-fit">{lab.subject?.name.charAt(0)=="."?lab.subject?.name.charAt(1):lab.subject?.name.charAt(0)}</span>
+                      <div className="w-3 h-3 absolute bottom-1 right-0 bg-emerald-500 rounded-full animate-pulse" />
+                    </div>
+
                     <div>
                       <h4 className="font-semibold text-slate-900">{lab.subject?.name || "Unnamed Lab"}</h4>
                       <p className="text-sm text-slate-600">{lab.subject?.code || "N/A"} • {lab.teacher?.name || "Unknown"}</p>
@@ -255,7 +259,7 @@ export default function Dashboard() {
                 return (
                   <div key={lab.id} className="flex items-center justify-between p-6 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
                     <div className="flex items-center gap-6">
-                      <div className="text-center">
+                      <div className="text-center bg-blue-500/20 rounded-full p-3 px-6">
                         <div className="text-2xl font-bold text-slate-900">{new Date(lab.startTime).getDate()}</div>
                         <div className="text-xs text-slate-600 uppercase">{new Date(lab.startTime).toLocaleDateString("en", { month: "short" })}</div>
                       </div>
@@ -274,11 +278,7 @@ export default function Dashboard() {
 
                       <div className="mt-3 space-y-2">
                         <div className="mt-3 space-y-2">
-                          {user?.role?.toString().toLowerCase() !== "teacher" ? (
-                            <Link to={`/labs/${lab.id}/grading`} className="block text-sm text-blue-600 hover:text-blue-700 font-medium">View Submissions & Grade →</Link>
-                          ) : (
-                            <Link to={`/labs/${lab.id}`} className="block text-sm text-blue-600 hover:text-blue-700 font-medium">View Submissions</Link>
-                          )}
+                          <Link to={`/labs/${lab.id}`} className="block text-sm text-blue-600 hover:text-blue-700 font-medium">View Submissions</Link>
                           <Link to={`/labs/${lab.id}`} className="block text-xs text-slate-500 hover:text-slate-700">View Lab details</Link>
                         </div>
                       </div>
@@ -321,7 +321,7 @@ export default function Dashboard() {
                 return (
                   <div key={lab.id} className="flex items-center justify-between p-6 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
                     <div className="flex items-center gap-6">
-                      <div className="text-center">
+                      <div className="text-center bg-emerald-500/20 p-3 px-6 rounded-full">
                         <div className="text-2xl font-bold text-slate-900">{new Date(lab.startTime).getDate()}</div>
                         <div className="text-xs text-slate-600 uppercase">{new Date(lab.startTime).toLocaleDateString("en", { month: "short" })}</div>
                       </div>

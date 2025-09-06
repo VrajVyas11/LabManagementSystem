@@ -30,16 +30,46 @@ namespace LabManagementBackend.Controllers
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> ClockIn([FromBody] ClockInDto dto)
         {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.LabId))
-                return BadRequest(new { message = "LabId is required." });
+            try
+            {
+                // Debug logging
+                Console.WriteLine($"ClockIn called with dto: {dto}");
+                Console.WriteLine($"LabId: '{dto?.LabId}', LateReason: '{dto?.LateReason}'");
 
-            var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(studentId))
-                return Unauthorized();
+                if (dto == null)
+                {
+                    return BadRequest(new { message = "Request body is required." });
+                }
 
-            var (success, message, attendance) = await _attendanceService.ClockInAsync(studentId, dto);
-            if (!success) return BadRequest(new { message });
-            return Ok(attendance);
+                if (string.IsNullOrWhiteSpace(dto.LabId))
+                {
+                    return BadRequest(new { message = "LabId is required and cannot be empty." });
+                }
+
+                var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                Console.WriteLine($"StudentId from claims: '{studentId}'");
+
+                if (string.IsNullOrEmpty(studentId))
+                {
+                    return Unauthorized(new { message = "Student ID not found in user claims." });
+                }
+
+                var (success, message, attendance) = await _attendanceService.ClockInAsync(studentId, dto);
+
+                Console.WriteLine($"ClockInAsync result - Success: {success}, Message: '{message}'");
+
+                if (!success)
+                {
+                    return BadRequest(new { message });
+                }
+
+                return Ok(attendance);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception in ClockIn: {ex}");
+                return StatusCode(500, new { message = "Internal server error", detail = ex.Message });
+            }
         }
 
         // Student clocks out
@@ -47,21 +77,38 @@ namespace LabManagementBackend.Controllers
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> ClockOut([FromBody] ClockOutDto dto)
         {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.LabId))
-                return BadRequest(new { message = "LabId is required." });
+            try
+            {
+                if (dto == null)
+                {
+                    return BadRequest(new { message = "Request body is required." });
+                }
 
-            var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(studentId))
-                return Unauthorized();
+                if (string.IsNullOrWhiteSpace(dto.LabId))
+                {
+                    return BadRequest(new { message = "LabId is required and cannot be empty." });
+                }
 
-            var (success, message, attendance) = await _attendanceService.ClockOutAsync(studentId, dto.LabId);
-            if (!success) return BadRequest(new { message });
-            return Ok(attendance);
+                var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(studentId))
+                {
+                    return Unauthorized(new { message = "Student ID not found in user claims." });
+                }
+
+                var (success, message, attendance) = await _attendanceService.ClockOutAsync(studentId, dto.LabId);
+                if (!success) return BadRequest(new { message });
+                return Ok(attendance);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception in ClockOut: {ex}");
+                return StatusCode(500, new { message = "Internal server error", detail = ex.Message });
+            }
         }
-
+    
         // Teacher gets attendance report for a lab, supports JSON, CSV, PDF
         [HttpGet("report/{labId}")]
-        [Authorize(Roles = "Teacher")]
+        // [Authorize(Roles = "Teacher,student")]
         public async Task<IActionResult> GetAttendanceReport(string labId, [FromQuery] string format = "json")
         {
             if (string.IsNullOrWhiteSpace(labId))

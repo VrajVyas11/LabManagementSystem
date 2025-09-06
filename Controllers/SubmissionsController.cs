@@ -1,4 +1,3 @@
-// Controllers/SubmissionsController.cs
 using LabManagementBackend.DTOs;
 using LabManagementBackend.Models;
 using LabManagementBackend.Services;
@@ -253,15 +252,13 @@ namespace LabManagementBackend.Controllers
                 var submission = await _submissionService.GetSubmissionAsyncByIdAsync(id);
                 if (submission == null) return NotFound(new { message = "Submission not found" });
 
-                var stream = FileHelper.GetFileStream(submission.FileUrl);
-                if (stream == null) return NotFound(new { message = "File not found on storage" });
+                // For Cloudinary URLs, redirect to the file directly
+                if (!string.IsNullOrWhiteSpace(submission.FileUrl))
+                {
+                    return Redirect(submission.FileUrl);
+                }
 
-                var contentType = FileHelper.GetContentTypeFromFileName(submission.FileName ?? submission.FileUrl) ?? "application/octet-stream";
-
-                // Set inline disposition so browser can preview (iframe) but still allow download in frontend
-                Response.Headers[HeaderNames.ContentDisposition] = $"inline; filename=\"{Path.GetFileName(submission.FileName ?? submission.FileUrl)}\"";
-
-                return File(stream, contentType);
+                return NotFound(new { message = "File not found" });
             }
             catch (Exception ex)
             {
@@ -315,5 +312,12 @@ namespace LabManagementBackend.Controllers
                 FileSize = submission.FileSize
             };
         }
+    }
+
+    public class GradeDto
+    {
+        public int? marks { get; set; }
+        public int maxMarks { get; set; }
+        public string feedback { get; set; } = string.Empty;
     }
 }

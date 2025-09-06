@@ -19,10 +19,6 @@ import {
   AlertCircle,
   Play,
   Square,
-  BookOpen,
-  User,
-  Mail,
-  Timer,
   FileUp,
   GraduationCap,
   BarChart3,
@@ -30,8 +26,8 @@ import {
   ClockAlert
 } from "lucide-react";
 
-// const BASE_HOST = "http://localhost:5036";
-const BASE_HOST = "/";
+const BASE_HOST = "http://localhost:5036";
+// const BASE_HOST = "";
 export default function LabDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -44,12 +40,15 @@ export default function LabDetail() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewSubmission, setPreviewSubmission] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [attendance, setAttendance] = useState(null);
 
   // Teacher states
   const [submissions, setSubmissions] = useState([]);
   const [submissionsSample, setSubmissionsSample] = useState([]);
   const [stats, setStats] = useState({ total: 0, submitted: 0, graded: 0 });
+  const [attendanceMap, setAttendanceMap] = useState({});
 
   // Common UI
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -79,6 +78,18 @@ export default function LabDetail() {
               setMessage({ type: "error", text: err.message });
             }
           }
+
+          try {
+            const report = await api.getLabAttendanceReport(id);
+            console.log(report)
+            const att = report.filter((data) => data.studentId == user.id)[0];
+            if (att) {
+              setAttendance(normalizeAttendance(att));
+            }
+          } catch (err) {
+            console.log(err)
+            // ignore if not found, assume not clocked in
+          }
         }
 
         if (isTeacher) {
@@ -93,6 +104,24 @@ export default function LabDetail() {
             setStats({ total, submitted, graded });
           } catch (err) {
             setMessage({ type: "error", text: err.message || "Failed to load submissions" });
+          }
+
+          try {
+            const report = await api.getLabAttendanceReport(id);
+            console.log(report)
+            const attMap = report.reduce((acc, a) => {
+              acc[a.studentId] = {
+                clockInTime: a.clockInTime ? new Date(a.clockInTime) : null,
+                clockOutTime: a.clockOutTime ? new Date(a.clockOutTime) : null,
+                lateReason: a.lateReason,
+                status: a.status
+              };
+              return acc;
+            }, {});
+            setAttendanceMap(attMap);
+          } catch (err) {
+            console.error(err);
+            setMessage({ type: "error", text: "Failed to load attendance data" });
           }
         }
       } catch (err) {
@@ -111,7 +140,7 @@ export default function LabDetail() {
         }
       }
     };
-  }, [id, isStudent, isTeacher, previewUrl]);
+  }, [id, isStudent, isTeacher, previewUrl, user]);
 
   function normalizeSubmission(s) {
     return {
@@ -129,6 +158,18 @@ export default function LabDetail() {
       status: (s.status ?? s.Status ?? (s.marks != null ? "graded" : "pending") ?? "pending").toString().toLowerCase(),
     };
   }
+
+  function normalizeAttendance(a) {
+    return {
+      clockInTime: a.clockInTime ? new Date(a.clockInTime) : null,
+      clockOutTime: a.clockOutTime ? new Date(a.clockOutTime) : null,
+      lateReason: a.lateReason ?? "",
+      status: a.status ?? "unknown"
+    };
+  }
+
+  const hasClockedIn = !!attendance?.clockInTime;
+  const isClockedIn = hasClockedIn && !attendance?.clockOutTime;
 
   const isLabActive = useCallback(() => {
     if (!lab) return false;
@@ -151,9 +192,9 @@ export default function LabDetail() {
     const start = new Date(lab.startTime);
     const end = new Date(lab.endTime);
 
-    if (now < start) return { text: "Upcoming", color: "muted", icon: Clock };
+    if (now < start) return { text: "Scheduled", color: "warning", icon: Clock };
     if (now >= start && now <= end) return { text: "Active", color: "success", icon: Play };
-    return { text: "Ended", color: "muted", icon: Square };
+    return { text: "Ended", color: "error", icon: Square };
   };
 
   const getSubmissionStatus = () => {
@@ -162,7 +203,7 @@ export default function LabDetail() {
     const deadline = new Date(lab.submissionDeadline);
 
     if (now <= deadline) return { text: "Open", color: "success" };
-    return { text: "Closed", color: "muted" };
+    return { text: "Closed", color: "error" };
   };
 
   async function handleClockIn() {
@@ -171,9 +212,14 @@ export default function LabDetail() {
       setMessage({ type: "error", text: "You can only clock in during lab hours." });
       return;
     }
+    if (hasClockedIn) {
+      setMessage({ type: "error", text: "You have already clocked in." });
+      return;
+    }
     setLoadingAction(true);
     try {
       await api.clockIn({ labId: id, lateReason });
+      setAttendance({ clockInTime: new Date(), clockOutTime: null, lateReason });
       setMessage({ type: "success", text: "Clocked in successfully." });
       setLateReason("");
     } catch (err) {
@@ -185,9 +231,18 @@ export default function LabDetail() {
 
   async function handleClockOut() {
     setMessage({ type: "", text: "" });
+    if (!isClockedIn) {
+      setMessage({ type: "error", text: "You need to clock in first." });
+      return;
+    }
+    if (!isLabActive()) {
+      setMessage({ type: "error", text: "Lab session has ended." });
+      return;
+    }
     setLoadingAction(true);
     try {
       await api.clockOut(id);
+      setAttendance(prev => ({ ...prev, clockOutTime: new Date() }));
       setMessage({ type: "success", text: "Clocked out successfully." });
     } catch (err) {
       setMessage({ type: "error", text: err.message || "Clock out failed" });
@@ -226,14 +281,33 @@ export default function LabDetail() {
 
   const handlePreview = async (submission) => {
     setMessage({ type: "", text: "" });
-    if (!submission?.id) return setMessage({ type: "error", text: "Invalid submission." });
+    if (!submission?.id || !submission?.fileUrl) {
+      setMessage({ type: "error", text: "Invalid submission or no file available." });
+      return;
+    }
     setPreviewLoading(true);
     try {
-      const { blobUrl } = await api.getSubmissionBlobUrl(submission.id);
-      if (previewUrl) try { window.URL.revokeObjectURL(previewUrl); } catch {
-        console.log("something went wrong")
+      const fileExtension = submission.fileName?.toLowerCase().split('.').pop();
+      let previewUrl;
+
+      if (['doc', 'docx'].includes(fileExtension)) {
+        // Use Google Docs Viewer for .doc/.docx files
+        previewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(submission.fileUrl)}&embedded=true`;
+      } else {
+        // Fetch blob URL for PDFs and images
+        const { blobUrl } = await api.getSubmissionBlobUrl(submission.id);
+        if (previewUrl) {
+          try {
+            window.URL.revokeObjectURL(previewUrl);
+          } catch {
+            console.log("Error revoking previous blob URL");
+          }
+        }
+        previewUrl = blobUrl;
       }
-      setPreviewUrl(blobUrl);
+
+      setPreviewUrl(previewUrl);
+      setPreviewSubmission(submission);
     } catch (err) {
       setMessage({ type: "error", text: err.message || "Preview failed" });
     } finally {
@@ -246,6 +320,7 @@ export default function LabDetail() {
       console.log("something went wrong")
     };
     setPreviewUrl(null);
+    setPreviewSubmission(null);
   };
 
   const handleDownload = async (submission) => {
@@ -256,11 +331,10 @@ export default function LabDetail() {
       setMessage({ type: "error", text: err.message || "Download failed" });
     }
   };
-
-  const handleDownloadReport = async (format = "csv") => {
+  async function handleDownloadReport(format = "pdf") {
     setMessage({ type: "", text: "" });
     try {
-      const url = `${BASE_HOST}/api/attendance/report/${id}?format=${encodeURIComponent(format)}`;
+      const url = `${BASE_HOST}/api/attendance/report/${"68bc097b4b1055b658d5a857"}?format=${encodeURIComponent(format)}`;
       const filename = `attendance_${id}.${format === "pdf" ? "pdf" : "csv"}`;
       await api.downloadFileWithAuth(url, filename);
       setMessage({ type: "success", text: `Report ${filename} downloaded.` });
@@ -280,6 +354,7 @@ export default function LabDetail() {
         submitted: !!s.fileUrl,
         status: s.status,
         marks: s.marks,
+        attendance: attendanceMap[s.studentId] || null
       };
     });
     return Object.values(byId);
@@ -310,27 +385,33 @@ export default function LabDetail() {
   return (
     <div className="space-y-8">
       {/* Hero Header (refined) */}
-      <div className="rounded-4xl shadow-md bg-white text-black p-6 md:p-8">
+      <div className="rounded-2xl shadow-md bg-white text-black p-6 md:p-8">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
           <div className="flex-1">
             <div className="flex items-center gap-4">
-              <div className="p-3.5 bg-blue-500/30 rounded-full">
-                <NotebookText strokeWidth={2.5} className="w-8 h-8 text-black/60" />
+              <div className="p-3 bg-blue-500/30 rounded-full">
+                <NotebookText strokeWidth={2} className="w-7 h-7 text-black/60" />
               </div>
               <div className="w-full">
-                <div className="flex flex-row w-full  justify-between items-center">
+                <div className="flex flex-row w-full justify-between items-center">
                   <h1 className="text-2xl md:text-3xl font-semibold leading-tight">
                     {lab.subject?.name || "Lab Session"}
                   </h1>
-                  <div className="flex flex-row items-end gap-2">
-                    <div className={`inline-flex  items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${labStatus.color === 'success' ? 'bg-emerald-600/20 text-emerald-700' : 'bg-red-700/40 border border-red-500/50 text-red-800'
+                  <div className="flex flex-row items-center gap-2">
+                    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${labStatus.color === 'success' ? 'bg-emerald-600/20 text-emerald-700' :
+                      labStatus.color === 'warning' ? 'bg-amber-600/20 text-amber-700' :
+                        'bg-red-700/20 border border-red-500/50 text-red-700'
                       }`}>
-                      <StatusIcon className={`w-4 ${labStatus.text == "Ended" ? "text-red-800 fill-red-600" : "text-emerald-500 fill-emerald-500"} h-4`} />
-                      <span >{labStatus.text}</span>
+                      <StatusIcon className={`w-4 h-4 ${labStatus.text === "Active" ? "text-emerald-500 fill-emerald-500" :
+                        labStatus.text === "Scheduled" ? "text-amber-500" :
+                          "text-red-800 fill-red-600"
+                        }`} />
+                      <span>{labStatus.text}</span>
                     </div>
 
-                    <div className={`inline-flex items-center  gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${submissionStatus.color === 'success' ? 'bg-emerald-600/20 text-emerald-800' : 'bg-red-700/40 border border-red-500/50 text-red-800'}`}>
-                      <Calendar strokeWidth={3} className={`w-4 ${submissionStatus.text == "Closed" ? "text-red-800" : "text-emerald-500 "} h-4`} />
+                    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${submissionStatus.color === 'success' ? 'bg-emerald-600/20 text-emerald-800' : 'bg-red-700/20 border border-red-500/50 text-red-800'
+                      }`}>
+                      <Calendar strokeWidth={2} className={`w-4 h-4 ${submissionStatus.text === "Closed" ? "text-red-800" : "text-emerald-500"}`} />
                       <span>Submissions {submissionStatus.text}</span>
                     </div>
                   </div>
@@ -341,8 +422,8 @@ export default function LabDetail() {
               </div>
             </div>
 
-            <div className={`mt-4 grid grid-cols-1 ${isTeacher?"sm:grid-cols-10":"sm:grid-cols-9"} gap-4`}>
-              <div className="rounded-lg col-span-3 bg-black/2 border border-black/5 p-4">
+            <div className={`mt-4 grid grid-cols-1 ${isTeacher ? "sm:grid-cols-10" : "sm:grid-cols-9"} gap-4`}>
+              <div className="rounded-lg col-span-3 bg-slate-50 border border-slate-200 p-4">
                 <div className="text-xs text-slate-600">Instructor</div>
                 <div className="mt-1 text-base font-semibold text-slate-800">
                   {lab.teacher?.name || "Not assigned"}
@@ -352,7 +433,7 @@ export default function LabDetail() {
                 </div>
               </div>
 
-              <div className="rounded-lg col-span-3 bg-black/2 border border-black/5 p-4">
+              <div className="rounded-lg col-span-3 bg-slate-50 border border-slate-200 p-4">
                 <div className="text-xs text-slate-600">Schedule</div>
                 <div className="mt-2 text-sm text-slate-800">
                   <div className="flex items-center justify-between">
@@ -361,30 +442,30 @@ export default function LabDetail() {
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-slate-600">Ends</span>
-                    <span className=" text-slate-600">{new Date(lab.endTime).toLocaleString()}</span>
+                    <span className="text-slate-600">{new Date(lab.endTime).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-lg col-span-3 bg-black/2 border border-black/5 p-4 flex flex-col justify-between">
-                <div className="text-xs text-slate-600">Submission</div>
+              <div className="rounded-lg col-span-3 bg-slate-50 border border-slate-200 p-4 flex flex-col justify-between">
+                <div className="text-xs text-slate-600">Submission Deadline</div>
                 <div className="mt-2 text-sm text-slate-800">
                   <div className="font-medium">{new Date(lab.submissionDeadline).toLocaleString()}</div>
-                  <div className="text-xs text-slate-600 mt-1">Deadline (local time)</div>
+                  <div className="text-xs text-slate-600 mt-1">(local time)</div>
                 </div>
               </div>
 
               {isTeacher && (
-                <div className="flex flex-col justify-start col-span-1  items-center w-full gap-2 ">
+                <div className="flex flex-col justify-start col-span-1 items-center w-full gap-2">
                   <button
                     onClick={() => handleDownloadReport("csv")}
-                    className=" w-full h-fit px-4 py-3 text-center flex bg-emerald-600/80 backdrop-blur-md font-bold text-white rounded-md hover:bg-emerald-600 transition justify-center items-center gap-2 text-sm"
+                    className="w-full px-4 py-3 text-center flex bg-emerald-600/80 font-bold text-white rounded-md hover:bg-emerald-600 transition justify-center items-center gap-2 text-sm"
                   >
                     <Download className="w-4 h-4" /> CSV
                   </button>
                   <button
                     onClick={() => handleDownloadReport("pdf")}
-                    className=" w-full  px-4 py-3 h-auto text-center flex bg-red-600/80 backdrop-blur-md font-bold text-white rounded-md hover:bg-red-600 transition justify-center items-center gap-2 text-sm"
+                    className="w-full px-4 py-3 text-center flex bg-red-600/80 font-bold text-white rounded-md hover:bg-red-600 transition justify-center items-center gap-2 text-sm"
                   >
                     <Download className="w-4 h-4" /> PDF
                   </button>
@@ -392,7 +473,6 @@ export default function LabDetail() {
               )}
             </div>
           </div>
-
         </div>
       </div>
 
@@ -417,8 +497,11 @@ export default function LabDetail() {
                 </div>
                 <div>
                   <div className="text-xs font-medium text-slate-500 mb-1">Status</div>
-                  <div className={`text-lg font-semibold ${isLabActive() ? 'text-emerald-600' : 'text-slate-600'}`}>
-                    {isLabActive() ? 'Active Now' : 'Inactive'}
+                  <div className={`text-lg font-semibold ${labStatus.text === 'Active' ? 'text-emerald-600' :
+                    labStatus.text === 'Scheduled' ? 'text-amber-600' :
+                      'text-red-600'
+                    }`}>
+                    {labStatus.text}
                   </div>
                 </div>
               </div>
@@ -437,20 +520,20 @@ export default function LabDetail() {
                     Reason for late arrival (optional)
                   </label>
                   <input
-                    disabled={!isLabActive()}
+                    disabled={!isLabActive() || hasClockedIn || loadingAction}
                     type="text"
                     placeholder="Optional reason for being late"
-                    value={lateReason}
+                    value={(!isLabActive() || hasClockedIn || loadingAction) ? attendance.lateReason : lateReason}
                     onChange={(e) => setLateReason(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-400 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-600"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-400 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-600 disabled:cursor-not-allowed"
                   />
                 </div>
 
                 <div className="flex gap-3">
                   <button
                     onClick={handleClockIn}
-                    disabled={!isLabActive() || loadingAction}
-                    className={`flex-1 px-5 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-2 ${isLabActive() && !loadingAction
+                    disabled={!isLabActive() || hasClockedIn || loadingAction}
+                    className={`flex-1 px-5 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-2 ${isLabActive() && !hasClockedIn && !loadingAction
                       ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                       : "bg-slate-100 text-slate-600 cursor-not-allowed"
                       }`}
@@ -460,13 +543,36 @@ export default function LabDetail() {
                   </button>
                   <button
                     onClick={handleClockOut}
-                    disabled={loadingAction}
-                    className="px-4 py-2 rounded-md font-medium text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-60"
+                    disabled={!isLabActive() || !isClockedIn || loadingAction}
+                    className={`px-4 py-2 rounded-md font-medium transition-colors flex items-center gap-2 ${isLabActive() && isClockedIn && !loadingAction
+                      ? "bg-red-600 hover:bg-red-700 text-white"
+                      : "bg-slate-100 text-slate-600 cursor-not-allowed"
+                      }`}
                   >
                     <Square className="w-4 h-4" />
-                    Clock Out
+                    {loadingAction ? "Clocking Out..." : "Clock Out"}
                   </button>
                 </div>
+
+                {hasClockedIn ? (
+                  <div className="mt-4 text-sm tracking-wide text-slate-600 text-center flex flex-col gap-4">
+                    <div className="flex flex-row justify-between items-center">
+                      Clocked in at: {attendance.clockInTime.toLocaleString()}
+                      {attendance.clockOutTime && (
+                        <span className="">
+                          Clocked out at: {attendance.clockOutTime.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    {attendance.lateReason && (
+                      <span className=" text-red-500 font-semibold">
+                        Late reason: {attendance.lateReason}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm text-slate-600">You have not clocked in yet.</p>
+                )}
               </div>
             </Card>
 
@@ -483,9 +589,9 @@ export default function LabDetail() {
                 </div>
               </div>
 
-              <div className={`mb-5 p-3 rounded-md ${canSubmit() ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50 border border-slate-100'}`}>
-                <div className={`text-sm font-medium ${canSubmit() ? 'text-emerald-800' : 'text-slate-600'}`}>
-                  {canSubmit() ? 'You can submit your work before the deadline.' : 'Submission deadline has passed.'}
+              <div className={`mb-5 p-3 rounded-md ${canSubmit() ? 'bg-emerald-50 border border-emerald-100' : 'bg-red-50 border border-red-100'}`}>
+                <div className={`text-sm font-medium ${canSubmit() ? 'text-emerald-800' : 'text-red-800'}`}>
+                  {canSubmit() ? 'You can submit your work before the deadline.' : 'Submission deadline has passed. Submissions are closed.'}
                 </div>
               </div>
 
@@ -494,8 +600,8 @@ export default function LabDetail() {
               <div className="flex gap-3 mt-5">
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting || !canSubmit()}
-                  className={`flex-1 py-2 px-5 rounded-md font-medium transition-colors flex items-center justify-center gap-2 ${canSubmit() && !submitting
+                  disabled={submitting || !canSubmit() || !selectedFile}
+                  className={`flex-1 py-2 px-5 rounded-md font-medium transition-colors flex items-center justify-center gap-2 ${canSubmit() && !submitting && selectedFile
                     ? "bg-indigo-600 hover:bg-indigo-700 text-white"
                     : "bg-slate-100 text-slate-600 cursor-not-allowed"
                     }`}
@@ -558,7 +664,7 @@ export default function LabDetail() {
                       <button
                         onClick={() => { !previewLoading && handlePreview(mySubmission); }}
                         disabled={previewLoading}
-                        className="px-3 py-2 bg-slate-100 rounded-md hover:bg-slate-200 transition inline-flex items-center gap-2 disabled:opacity-60"
+                        className="px-3 py-2 bg-slate-300 rounded-md hover:bg-slate-200 transition inline-flex items-center gap-2 disabled:opacity-60"
                       >
                         <Eye className="w-4 h-4" />
                         {previewLoading ? "Loading..." : "Preview"}
@@ -572,10 +678,11 @@ export default function LabDetail() {
                       </button>
                     </div>
                   </div>
-
                   {previewUrl && (
                     <div className="mt-5 border-t pt-5">
-                      {mySubmission.fileName?.toLowerCase().endsWith(".pdf") ? (
+                      {mySubmission.fileName?.toLowerCase().endsWith(".pdf") ||
+                        mySubmission.fileName?.toLowerCase().endsWith(".doc") ||
+                        mySubmission.fileName?.toLowerCase().endsWith(".docx") ? (
                         <iframe
                           title="submission-preview"
                           src={previewUrl}
@@ -612,11 +719,11 @@ export default function LabDetail() {
               <div className="space-y-3 text-sm">
                 <div>
                   <div className="font-medium text-slate-700">Subject Code</div>
-                  <div className="text-slate-600">{lab.subject?.code}</div>
+                  <div className="text-slate-600">{lab.subject?.code || "—"}</div>
                 </div>
                 <div>
                   <div className="font-medium text-slate-700">Department</div>
-                  <div className="text-slate-600">{lab.teacher?.department}</div>
+                  <div className="text-slate-600">{lab.teacher?.department || "—"}</div>
                 </div>
                 <div>
                   <div className="font-medium text-slate-700">Lab ID</div>
@@ -687,8 +794,8 @@ export default function LabDetail() {
             <Card className="p-5 bg-white border-slate-100 shadow-sm">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-slate-600" />
-                  Recent Submissions
+                  <FileText className="w-7 h-7 text-slate-600" />
+                  Lab Submissions
                 </h3>
                 <Link
                   to={`/labs/${lab.id}/grading`}
@@ -725,7 +832,7 @@ export default function LabDetail() {
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium ${s.status === 'graded' ? 'bg-emerald-100 text-emerald-800' :
+                        <div className={`px-4 py-4 rounded-md text-sm font-medium ${s.status === 'graded' ? 'bg-emerald-100 text-emerald-800' :
                           s.fileUrl ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-600'
                           }`}>
                           {s.status === 'graded' ? `${s.marks}/${s.maxMarks}` :
@@ -734,19 +841,19 @@ export default function LabDetail() {
 
                         <div className="flex gap-2">
                           <button
-                            onClick={() => handlePreview(s)}
-                            disabled={!s.fileUrl}
-                            className="px-2 py-1 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+                            onClick={() => !previewLoading && handlePreview(s)}
+                            disabled={!s.fileUrl || previewLoading}
+                            className="px-4 py-4 bg-slate-300 text-slate-700 rounded-md hover:bg-slate-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                           >
-                            <Eye className="w-3 h-3" />
+                            <Eye className="w-5 h-5" />
                             Preview
                           </button>
                           <button
                             onClick={() => handleDownload(s)}
                             disabled={!s.fileUrl}
-                            className="px-2 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+                            className="px-4 py-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                           >
-                            <Download className="w-3 h-3" />
+                            <Download className="w-5 h-5" />
                             Download
                           </button>
                         </div>
@@ -771,7 +878,7 @@ export default function LabDetail() {
             {/* Students Overview */}
             <Card className="p-5 bg-white border-slate-100 shadow-sm">
               <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <Users className="w-4 h-4 text-slate-600" />
+                <Users className="w-7 h-7 text-slate-600" />
                 Students Overview
               </h3>
 
@@ -783,30 +890,56 @@ export default function LabDetail() {
               ) : (
                 <div className="space-y-3 max-h-80 overflow-auto">
                   {participantList.map(p => (
-                    <div key={p.id} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-md hover:shadow-sm transition">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold ${p.submitted ? 'bg-emerald-600' : 'bg-slate-400'
-                          }`}>
-                          {p.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-medium text-slate-800">{p.name}</div>
-                          <div className="text-xs text-slate-500">{p.email}</div>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <div className={`text-xs font-medium ${p.submitted ? 'text-emerald-600' : 'text-slate-500'
-                          }`}>
-                          {p.submitted ? 'Submitted' : 'Not submitted'}
-                        </div>
-                        <div className="text-xs text-slate-600 capitalize">{p.status}</div>
-                        {p.marks != null && (
-                          <div className="text-xs font-medium text-indigo-600 mt-1">
-                            Score: {p.marks}
+                    <div key={p.id} className="flex flex-col w-full   p-3 bg-white border border-slate-100 rounded-md hover:shadow-sm transition">
+                      <div className=" flex flex-row justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold ${p.submitted ? 'bg-emerald-600' : 'bg-slate-400'
+                            }`}>
+                            {p.name.charAt(0).toUpperCase()}
                           </div>
-                        )}
+                          <div>
+                            <div className="font-medium text-slate-800">{p.name}</div>
+                            <div className="text-xs text-slate-500">{p.email}</div>
+                          </div>
+                        </div>
+                        <div className="text-right space-y-0.5">
+                          <div className={`text-sm uppercase font-bold ${p.submitted ? 'text-emerald-600' : 'text-slate-500'
+                            }`}>
+                            <span className="capitalize text-base font-medium text-gray-600">Work :</span>  {p.submitted ? 'Submitted' : 'Not submitted'}
+                          </div>
+                          <div className={`text-sm uppercase font-bold ${p.status == "pending" ? 'text-yellow-600' : 'text-emerald-500'
+                            }`}>
+                            <span className="capitalize text-base font-medium text-gray-600">Grading :</span>  {p.status}
+                          </div>
+                          {p.marks != null && (<div className={`text-sm uppercase font-bold ${p.marks ? 'text-blue-600' : 'text-yellow-500'
+                            }`}>
+                            <span className="capitalize text-base font-medium text-gray-600">Score:</span>  {p.marks ? `${p.marks}/100` : "? / 100"}
+                          </div>)}
+
+                        </div>
+
                       </div>
+                      {p.attendance ? (
+                        <div className=" flex flex-col mt-5 pl-10 tracking-wide">
+                          <div className="flex flex-row w-full justify-between items-center">
+                            <div className="text-sm text-slate-600">
+                              Clock in: {p.attendance.clockInTime?.toLocaleString() || 'Not clocked in'}
+                            </div>
+                            <div className="text-sm text-slate-600">
+                              Clock out: {p.attendance.clockOutTime?.toLocaleString() || 'Not clocked out'}
+                            </div>
+                          </div>
+                          {p.attendance.lateReason && (
+                            <div className="text-base mt-4 font-semibold text-red-600">
+                              Late Reason: {p.attendance.lateReason}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-slate-600">
+                          No attendance record
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -858,11 +991,11 @@ export default function LabDetail() {
                 </div>
                 <div>
                   <div className="font-medium text-slate-700">Subject Code</div>
-                  <div className="text-slate-600">{lab.subject?.code}</div>
+                  <div className="text-slate-600">{lab.subject?.code || "—"}</div>
                 </div>
                 <div>
                   <div className="font-medium text-slate-700">Department</div>
-                  <div className="text-slate-600">{lab.teacher?.department}</div>
+                  <div className="text-slate-600">{lab.teacher?.department || "—"}</div>
                 </div>
                 <div>
                   <div className="font-medium text-slate-700">Lab ID</div>
@@ -922,7 +1055,9 @@ export default function LabDetail() {
               </button>
             </div>
             <div className="p-4 overflow-auto max-h-[calc(90vh-120px)]">
-              {previewUrl.includes('.pdf') ? (
+              {previewSubmission?.fileName?.toLowerCase().endsWith(".pdf") ||
+                previewSubmission?.fileName?.toLowerCase().endsWith(".doc") ||
+                previewSubmission?.fileName?.toLowerCase().endsWith(".docx") ? (
                 <iframe
                   title="file-preview"
                   src={previewUrl}
